@@ -1,0 +1,22 @@
+# Données (jamais versionnées : confidentialité + poids des fichiers)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# dbt
+dbt/erp_platform/target/
+dbt/erp_platform/dbt_packages/
+dbt/erp_platform/logs/
+
+# OS
+.DS_Store
