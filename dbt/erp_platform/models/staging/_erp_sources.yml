@@ -1,0 +1,66 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Données brutes chargées par le pipeline d'ingestion Python
+      (ingestion/core/loader.py), à partir de la config
+      config/sources/erp_ventes_achats.yaml. Les noms de colonnes ici
+      correspondent aux clés du mapping (colonne gauche du YAML), pas
+      aux en-têtes du fichier Excel d'origine.
+    schema: raw
+    tables:
+      - name: erp_ventes_achats
+        description: >
+          Écritures comptables Ventes/Achats, une ligne par écriture
+          (un document peut contenir plusieurs lignes pour le même article,
+          ex: plusieurs lots livrés sur le même bon de livraison).
+        columns:
+          - name: date_ecriture
+            description: Date de comptabilisation de l'écriture
+            data_tests:
+              - not_null
+          - name: type_ecriture
+            description: "Vente ou Achat"
+            data_tests:
+              - not_null
+              - accepted_values:
+                  values: ["Vente", "Achat"]
+          - name: type_document
+            description: >
+              Type de pièce ERP : Expédition vente, Réception achat,
+              ou Réception retour vente (avoir client)
+            data_tests:
+              - not_null
+          - name: numero_document
+            description: Numéro de bon de livraison / pièce ERP
+            data_tests:
+              - not_null
+          - name: quantite
+            description: >
+              Quantité brute telle qu'exportée par l'ERP, signe non
+              normalisé (les ventes sortent en négatif, les achats en positif)
+            data_tests:
+              - not_null
+          - name: numero_article
+            description: Identifiant article (SKU)
+            data_tests:
+              - not_null
+          - name: code_unite
+            description: >
+              Unité de mesure de la ligne (QUINTAL, KG, UNITE, ou unités
+              de conditionnement type CRT-12*1) — hétérogène, pas convertible
+              sans table de correspondance poids/unité
+            data_tests:
+              - not_null
+          - name: quantite_facturee
+            description: Quantité facturée (généralement = quantite)
+            data_tests:
+              - not_null
+          - name: montant_reel
+            description: >
+              Montant réel de la ligne. Positif pour la quasi-totalité des
+              ventes et achats ; négatif pour la quasi-totalité des retours
+              vente (avoir qui réduit le CA)
+            data_tests:
+              - not_null

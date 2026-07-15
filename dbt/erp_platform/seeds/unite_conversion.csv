@@ -1,0 +1,13 @@
+code_unite,unite_reference,facteur_vers_unite_reference,valide_par_entreprise,commentaire
+QUINTAL,KG,100,non,1 quintal = 100 kg (standard) - a confirmer
+KG,KG,1,non,
+UNITE,UNITE,1,non,Article vendu a la piece pas convertible en poids sans referentiel article
+LITRE,LITRE,1,non,Volume pas comparable directement a un poids
+SAC,KG,,non,Poids par sac variable selon l'article - necessite le referentiel produit
+FARDEAU,UNITE,,non,Nombre d'unites par fardeau a confirmer avec l'entreprise
+CRT-10*1,UNITE,10,non,Carton de 10 x 1 unite
+CRT-12*1,UNITE,12,non,Carton de 12 x 1 unite
+CRT-12*500,KG,6,non,Carton de 12 x 500g = 6 kg a confirmer
+CRT-20*500,KG,10,non,Carton de 20 x 500g = 10 kg a confirmer
+CRT-24*500,KG,12,non,Carton de 24 x 500g = 12 kg a confirmer
+CRT-40*250,KG,10,non,Carton de 40 x 250g = 10 kg a confirmer

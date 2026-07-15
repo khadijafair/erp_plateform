@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: int_achats_par_article
+    description: Agrégation des achats par article (quantité, montant, CMUP)
+    columns:
+      - name: article_key
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('dim_article')
+              field: article_key
+
+  - name: int_ventes_par_article
+    description: Agrégation des ventes (hors retours) par article
+    columns:
+      - name: article_key
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('dim_article')
+              field: article_key
+
+  - name: int_retours_par_article
+    description: Agrégation des retours vente par article
+    columns:
+      - name: article_key
+        data_tests:
+          - unique
+          - not_null

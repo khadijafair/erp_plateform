@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: stg_erp_ventes_achats
+    description: >
+      Écritures Ventes/Achats fiabilisées : signe de quantité normalisé
+      (négatif = sortie stock, positif = entrée stock), montants achat
+      forcés positifs, retours vente identifiés. Une ligne = une ligne
+      source, aucune ligne n'est supprimée ni agrégée.
+    columns:
+      - name: transaction_id
+        description: Clé technique unique, stable même pour les lignes multiples d'un même document/article
+        data_tests:
+          - unique
+          - not_null
+      - name: date_ecriture
+        data_tests:
+          - not_null
+      - name: type_ecriture
+        data_tests:
+          - accepted_values:
+              values: ["Vente", "Achat"]
+      - name: numero_article
+        data_tests:
+          - not_null
+      - name: quantite_stock
+        description: "Quantité signée : négatif = sortie de stock (vente), positif = entrée (achat, retour)"
+      - name: montant_reel
+        description: "Montant signé : achats toujours positifs, ventes/retours au signe d'origine (retour = négatif = réduction du CA)"
+      - name: cle_metier_non_unique
+        description: >
+          True si (numero_document, numero_article) apparaît sur plusieurs
+          lignes — cas normal en pratique (lots multiples), pas une erreur
+          de qualité en soi, conservé à titre informatif

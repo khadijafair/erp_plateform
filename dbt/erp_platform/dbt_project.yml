@@ -1,0 +1,35 @@
+name: 'erp_platform'
+version: '1.0.0'
+config-version: 2
+
+profile: 'erp_platform'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# ---------------------------------------------------------------------------
+# Règles métier centralisées ici plutôt qu'en dur dans le SQL, dans le même
+# esprit que la couche d'ingestion (config/sources/*.yaml) : si la nomenclature
+# ERP change (ex: nouveau libellé de type de document pour les retours), on
+# ajuste cette liste, pas le code des modèles.
+# ---------------------------------------------------------------------------
+vars:
+  retour_vente_document_types: ["Réception retour vente"]
+  vente_document_types: ["Expédition vente"]
+  achat_document_types: ["Réception achat"]
+
+models:
+  erp_platform:
+    staging:
+      +materialized: view
+      +schema: staging
+    marts:
+      +materialized: table
+      +schema: marts
