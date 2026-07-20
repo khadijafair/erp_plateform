@@ -1,0 +1,35 @@
+# Configuration de source : Référentiel Articles (Master Data)
+source_id: erp_referentiel_articles
+label: "Référentiel Articles (master data)"
+connector: excel
+file_pattern: "referentiel_articles*.xlsx"
+
+# Mapping : nom_standard -> nom_colonne_source
+mapping:
+  numero_article: "N°"
+  description: "Description"
+  unite_base: "Unité de base"
+  stock: "Stocks"
+
+# Validation de schéma (contrôle d'ingestion)
+schema:
+  numero_article:
+    type: string
+    required: true
+  description:
+    type: string
+    required: true
+  unite_base:
+    type: string
+    required: true
+  stock:
+    type: float
+    required: true
+
+# Clé d'unicité métier
+business_key:
+  - numero_article
+
+# Paramètres du domaine Référentiel Articles
+business_rules:
+  cible_table_brute: "raw.erp_referentiel_articles"

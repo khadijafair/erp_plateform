@@ -1,0 +1,65 @@
+# Configuration de source : Production / Assemblage
+source_id: erp_production_assemblage
+label: "Écritures de production / assemblage (ERP)"
+connector: excel
+file_pattern: "Production*.xlsx"
+
+
+# Mapping : nom_standard -> nom_colonne_source
+mapping:
+  numero_origine: "N° origine"
+  date_ecriture: "Date comptabilisation"
+  type_ecriture: "Type écriture"
+  numero_commande: "N° commande"
+  type_document: "Type document"
+  numero_document: "N° document"
+  quantite: "Quantité"
+  numero_article: "N° article"
+  code_magasin: "Code magasin"
+  code_unite: "Code unité"
+
+# Validation de schéma (contrôle d'ingestion)
+schema:
+  numero_origine:
+    type: string
+    required: true
+  date_ecriture:
+    type: date
+    required: true
+  type_ecriture:
+    type: string
+    required: true
+    allowed_values:
+      - "Consommation d'assemblage"
+      - "Résultat d'assemblage"
+  numero_commande:
+    type: string
+    required: true
+  type_document:
+    type: string
+    required: true
+  numero_document:
+    type: string
+    required: true
+  quantite:
+    type: float
+    required: true
+  numero_article:
+    type: string
+    required: true
+  code_magasin:
+    type: string
+    required: true
+  code_unite:
+    type: string
+    required: true
+
+# Clé d'unicité métier
+business_key:
+  - numero_document
+  - numero_article
+
+# Paramètres du domaine Production/Assemblage
+business_rules:
+  normaliser_signe_quantite: false  # déjà négatif=consommation / positif=résultat dans la source
+  cible_table_brute: "raw.erp_production_assemblage"
