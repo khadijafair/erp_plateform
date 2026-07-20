@@ -2,7 +2,7 @@
 source_id: erp_referentiel_articles
 label: "Référentiel Articles (master data)"
 connector: excel
-file_pattern: "referentiel_articles*.xlsx"
+file_pattern: "stock*.xlsx"
 
 # Mapping : nom_standard -> nom_colonne_source
 mapping:
