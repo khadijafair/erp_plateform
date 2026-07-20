@@ -5,8 +5,6 @@ l'ERP de l'entreprise : ingestion générique pilotée par configuration,
 fiabilisation des données, analyse de marge, détection d'anomalies et
 prévision de la demande.
 
-> **Statut du projet** : Phase 1 en cours — pipeline d'ingestion générique
-> validé sur données réelles. Voir [Feuille de route](#feuille-de-route).
 
 ---
 
@@ -192,3 +190,70 @@ Le connecteur générique développé ici s'inspire de leur architecture
 (principe "tap/target" : un connecteur interchangeable par source), à une
 échelle adaptée à un projet de stage, tout en gardant la maîtrise complète
 du code plutôt que de dépendre d'une plateforme externe.
+
+```
+erp-platform
+├─ config
+│  └─ sources
+│     └─ erp_ventes_achats.yaml
+├─ data
+├─ dbt
+│  └─ erp_platform
+│     ├─ dbt_project.yml
+│     ├─ models
+│     │  ├─ intermediate
+│     │  │  ├─ int_achats_par_article.sql
+│     │  │  ├─ int_retours_par_article.sql
+│     │  │  ├─ int_ventes_par_article.sql
+│     │  │  └─ _intermediate.yml
+│     │  ├─ marts
+│     │  │  ├─ dim_article.sql
+│     │  │  ├─ dim_date.sql
+│     │  │  ├─ dim_unite.sql
+│     │  │  ├─ fact_transactions.sql
+│     │  │  ├─ mart_abc_article.sql
+│     │  │  ├─ mart_anomalies_ventes.sql
+│     │  │  ├─ mart_marge_article.sql
+│     │  │  └─ _marts.yml
+│     │  └─ staging
+│     │     ├─ stg_erp_ventes_achats.sql
+│     │     ├─ _erp_sources.yml
+│     │     └─ _stg_erp_ventes_achats.yml
+│     ├─ package-lock.yml
+│     ├─ packages.yml
+│     ├─ profiles.yml.example
+│     └─ seeds
+│        └─ unite_conversion.csv
+├─ docker-compose.yml
+├─ docs
+│  ├─ data_dictionary.md
+│  └─ powerbi_dashboard_guide.md
+├─ erp_platform.pbix
+├─ ingestion
+│  ├─ connectors
+│  │  ├─ excel_connector.py
+│  │  └─ __init__.py
+│  ├─ core
+│  │  ├─ config_loader.py
+│  │  ├─ loader.py
+│  │  ├─ validator.py
+│  │  └─ __init__.py
+│  ├─ main.py
+│  └─ __init__.py
+├─ ml
+│  ├─ demand_forecast
+│  │  ├─ config.yaml
+│  │  ├─ forecast.py
+│  │  └─ __init__.py
+│  ├─ schema_mapper
+│  │  ├─ infer_mapping.py
+│  │  ├─ ollama_client.py
+│  │  ├─ schema_ventes_achats.yaml
+│  │  └─ __init__.py
+│  └─ __init__.py
+├─ README.md
+├─ Recap_Traitement_Donnees_ERP.pdf
+├─ requirements.txt
+└─ tests
+
+```

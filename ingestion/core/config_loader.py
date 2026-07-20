@@ -1,14 +1,10 @@
-"""
-Chargement et validation légère des fichiers de configuration de source.
+"""Chargement et parsing des fichiers de configuration YAML."""
 
-Ce module fait partie de la COUCHE GÉNÉRIQUE du pipeline : il ne connaît
-rien du sens métier des colonnes, il sait juste lire et structurer un
-fichier YAML de configuration de source.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 import yaml
 
 
@@ -19,40 +15,44 @@ class SourceConfig:
     connector: str
     file_pattern: str
     mapping: dict[str, str]
-    schema: dict[str, dict]
-    business_key: list[str]
-    business_rules: dict = field(default_factory=dict)
-    raw_path: Path | None = None  # renseigné à l'exécution
+    schema: dict[str, dict[str, Any]]
+    business_key: list[str] = field(default_factory=list)
+    business_rules: dict[str, Any] = field(default_factory=dict)
+    raw_path: Path | None = None
 
     @property
     def business_columns(self) -> list[str]:
-        """Noms de colonnes 'métier génériques' (clés du mapping)."""
+        """Noms de colonnes normalisés (clés du mapping)."""
         return list(self.mapping.keys())
 
     @property
     def source_columns(self) -> list[str]:
-        """Noms de colonnes réels attendus dans le fichier source."""
+        """Noms de colonnes d'origine attendus dans le fichier source."""
         return list(self.mapping.values())
 
+    @property
     def reverse_mapping(self) -> dict[str, str]:
-        """nom réel de colonne -> nom métier générique."""
+        """Dictionnaire de correspondance : nom_source -> nom_normalise."""
         return {v: k for k, v in self.mapping.items()}
 
 
 def load_source_config(path: str | Path) -> SourceConfig:
-    """Charge un fichier config/sources/*.yaml et le structure en objet SourceConfig."""
-    path = Path(path)
-    with open(path, "r", encoding="utf-8") as f:
+    """Charge un fichier config/sources/*.yaml et instancie un objet SourceConfig."""
+    config_path = Path(path)
+
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Fichier de configuration introuvable : {config_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
 
-    required_keys = ["source_id", "connector", "mapping", "schema"]
-    missing = [k for k in required_keys if k not in raw]
+    if not isinstance(raw, dict):
+        raise ValueError(f"Fichier de configuration vide ou malformé : {config_path}")
+
+    required_keys = {"source_id", "connector", "mapping", "schema"}
+    missing = required_keys - raw.keys()
     if missing:
-        raise ValueError(
-            f"Configuration invalide ({path}) : clés manquantes {missing}. "
-            "Une configuration de source doit définir au minimum "
-            "source_id, connector, mapping et schema."
-        )
+        raise ValueError(f"Configuration {config_path} incomplète. Clés manquantes : {sorted(missing)}")
 
     return SourceConfig(
         source_id=raw["source_id"],

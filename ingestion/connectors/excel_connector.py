@@ -1,16 +1,5 @@
-"""
-Connecteur Excel — un "connecteur" au sens tap/target (Airbyte, Meltano...).
+"""Connecteur d'ingestion pour fichiers Excel."""
 
-Rôle unique : lire un fichier Excel et renvoyer un DataFrame dont les colonnes
-ont été renommées vers les noms métier génériques définis dans le mapping
-de la configuration de source. Ce connecteur ne fait AUCUNE règle métier
-(pas de nettoyage de signe, pas de séparation Vente/Achat) : ça, c'est le
-rôle de la couche "modules métier" (dbt / analyse), pas du connecteur.
-
-Pour brancher une nouvelle source demain (CSV, API, autre ERP), on ajoute
-un nouveau fichier ici (ex: csv_connector.py, api_connector.py) qui respecte
-la même interface : read(source_config, file_path) -> DataFrame normalisé.
-"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,22 +9,28 @@ from ingestion.core.config_loader import SourceConfig
 
 
 def read(source_config: SourceConfig, file_path: str | Path) -> pd.DataFrame:
-    """Lit un fichier Excel et renomme les colonnes vers les noms métier génériques."""
-    df = pd.read_excel(file_path)
+    """Lit un fichier Excel, valide la présence des colonnes et normalise les en-têtes."""
+    path = Path(file_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Fichier source introuvable : {path}")
 
-    missing_cols = [c for c in source_config.source_columns if c not in df.columns]
+    df = pd.read_excel(path)
+
+    # Vérification des colonnes requises par le mapping
+    missing_cols = set(source_config.source_columns) - set(df.columns)
     if missing_cols:
         raise ValueError(
-            f"Colonnes attendues absentes du fichier '{file_path}': {missing_cols}. "
-            f"Vérifie le mapping dans la config de source '{source_config.source_id}'."
+            f"Colonnes attendues absentes dans '{path.name}' : {sorted(missing_cols)}. "
+            f"Vérifiez le dictionnaire de mapping pour '{source_config.source_id}'."
         )
 
-    df = df.rename(columns=source_config.reverse_mapping())
-    df = df[source_config.business_columns]  # ordre stable, colonnes non mappées ignorées
+    # Renommage vers les noms métier et filtrage/réordonnancement des colonnes
+    df = df.rename(columns=source_config.reverse_mapping)
+    df = df[source_config.business_columns].copy()
 
-    # métadonnées de traçabilité (couche générique : d'où vient la ligne, quand a-t-elle été ingérée)
+    # Métadonnées de traçabilité (Data Lineage)
     df["_source_id"] = source_config.source_id
-    df["_source_file"] = Path(file_path).name
-    df["_ingested_at"] = pd.Timestamp.utcnow()
+    df["_source_file"] = path.name
+    df["_ingested_at"] = pd.Timestamp.now(tz="UTC")
 
     return df

@@ -1,14 +1,5 @@
-"""
-Prévision de la demande hebdomadaire, article par article, sur les
-articles classe A (les plus vendus, cf mart_abc_article).
+"""Module de prévision de la demande par article avec Prophet."""
 
-Un modèle Prophet distinct est entraîné par article (pas un modèle global) :
-chaque article a sa propre saisonnalité et dynamique de vente, un seul
-modèle partagé lisserait ces différences.
-
-Usage :
-    python -m ml.demand_forecast.forecast
-"""
 from __future__ import annotations
 
 import os
@@ -20,7 +11,7 @@ import yaml
 from prophet import Prophet
 from sqlalchemy import create_engine, text
 
-warnings.filterwarnings("ignore")  # Prophet est bruyant sur stdout/warnings, sans impact sur le résultat
+warnings.filterwarnings("ignore")
 
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 
@@ -31,7 +22,9 @@ def load_config() -> dict:
 
 
 def get_engine():
-    database_url = os.getenv("DATABASE_URL", "postgresql://postgres:changeme@localhost:5432/erp_platform")
+    database_url = os.getenv(
+        "DATABASE_URL", "postgresql://postgres:changeme@localhost:5432/erp_platform"
+    )
     return create_engine(database_url)
 
 
@@ -57,14 +50,15 @@ def get_historique_hebdo(engine, article_key: str, config: dict) -> pd.DataFrame
         order by 1
     """
     df = pd.read_sql(text(query), engine, params={"article_key": article_key})
-    df["ds"] = pd.to_datetime(df["ds"])  # aligne le type sur celui produit par Prophet (sinon .isin échoue silencieusement)
+    df["ds"] = pd.to_datetime(df["ds"])
     return df
 
 
 def forecast_article(historique: pd.DataFrame, horizon_semaines: int) -> pd.DataFrame:
+    """Entraîne un modèle Prophet et génère les prévisions."""
     model = Prophet(
-        weekly_seasonality=False,   # non pertinent : la donnée est déjà agrégée à la semaine
-        yearly_seasonality=True,    # pertinent : effets saisonniers plausibles sur 3 ans d'historique
+        weekly_seasonality=False,
+        yearly_seasonality=True,
         daily_seasonality=False,
         interval_width=0.80,
     )
@@ -81,8 +75,6 @@ def run():
     engine = get_engine()
 
     articles = get_articles_a_prevoir(engine, config)
-    print(f"{len(articles)} article(s) dans le périmètre ({config['perimetre']})")
-
     resultats = []
     articles_ignores = []
 
@@ -99,31 +91,29 @@ def run():
         prevision["is_historique"] = prevision["ds"].isin(hist["ds"])
         resultats.append(prevision)
 
-        print(f"  OK  {row['numero_article']:<25} {len(hist)} semaines d'historique -> prévu")
-
-    if articles_ignores:
-        print(f"\n{len(articles_ignores)} article(s) ignoré(s) (historique < {config['min_semaines_historique']} semaines) :")
-        for numero, n in articles_ignores:
-            print(f"  SKIP {numero:<25} {n} semaines seulement")
-
     if not resultats:
-        print("Aucun article prévisible avec les critères actuels.")
+        print("Aucun article à prévoir.")
         return
 
-    df_final = pd.concat(resultats, ignore_index=True).rename(columns={
-        "ds": "semaine",
-        "yhat": "quantite_prevue",
-        "yhat_lower": "quantite_prevue_min",
-        "yhat_upper": "quantite_prevue_max",
-    })
+    df_final = pd.concat(resultats, ignore_index=True).rename(
+        columns={
+            "ds": "semaine",
+            "yhat": "quantite_prevue",
+            "yhat_lower": "quantite_prevue_min",
+            "yhat_upper": "quantite_prevue_max",
+        }
+    )
+
+    # Sécurité : pas de prévisions de vente négatives
     df_final["quantite_prevue"] = df_final["quantite_prevue"].clip(lower=0)
     df_final["quantite_prevue_min"] = df_final["quantite_prevue_min"].clip(lower=0)
 
     schema, table = config["table_sortie"].split(".")
     with engine.begin() as conn:
         conn.exec_driver_sql(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+
     df_final.to_sql(table, engine, schema=schema, if_exists="replace", index=False)
-    print(f"\n{len(df_final)} lignes écrites dans {config['table_sortie']}")
+    print(f"Prévisions enregistrées dans {config['table_sortie']} ({len(df_final)} lignes).")
 
 
 if __name__ == "__main__":

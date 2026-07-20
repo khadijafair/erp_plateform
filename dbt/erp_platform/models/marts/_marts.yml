@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: dim_date
-    description: Calendrier jour par jour couvrant la plage des écritures présentes
+    description: Dimension calendrier au grain quotidien.
     columns:
       - name: date_id
         data_tests:
@@ -10,7 +10,7 @@ models:
           - not_null
 
   - name: dim_article
-    description: Un article par ligne, avec statistiques dérivées des transactions (pas de référentiel article externe disponible)
+    description: Dimension article dérivée des écritures de transactions.
     columns:
       - name: article_key
         data_tests:
@@ -22,7 +22,7 @@ models:
           - not_null
 
   - name: dim_unite
-    description: Unités de mesure observées, catégorisées (poids / unitaire / conditionnement) — non convertibles entre elles sans référentiel externe
+    description: Dimension des unités de mesure observées.
     columns:
       - name: unite_key
         data_tests:
@@ -30,11 +30,7 @@ models:
           - not_null
 
   - name: fact_transactions
-    description: >
-      Table de faits au grain "ligne d'écriture Ventes/Achats". Signe déjà
-      normalisé en amont (staging) : quantite_stock négative = sortie,
-      positive = entrée ; montant_reel positif pour un achat, au signe
-      d'origine pour une vente/retour.
+    description: Table de faits consolidée des écritures Ventes et Achats.
     columns:
       - name: transaction_id
         data_tests:
@@ -60,11 +56,7 @@ models:
               field: unite_key
 
   - name: mart_marge_article
-    description: >
-      Marge brute estimée par article (CA net - coût des quantités vendues
-      valorisées au CMUP achat). Voir colonne marge_fiable : false si
-      l'article mélange plusieurs unités (CMUP alors non comparable), auquel
-      cas le chiffre est indicatif seulement, pas à publier tel quel.
+    description: Marge brute estimée par article (CA net moins CMUP).
     columns:
       - name: article_key
         data_tests:
@@ -75,7 +67,7 @@ models:
               field: article_key
 
   - name: mart_abc_article
-    description: Classement Pareto (A/B/C) des articles par contribution au chiffre d'affaires net
+    description: Classification Pareto (A/B/C) selon la contribution au CA net.
     columns:
       - name: article_key
         data_tests:
@@ -87,10 +79,7 @@ models:
               values: ["A", "B", "C"]
 
   - name: mart_anomalies_ventes
-    description: >
-      Lignes de vente dont le prix unitaire facturé est inférieur au CMUP
-      achat de l'article (détection par règle métier, restreinte aux
-      articles à unité unique pour éviter les faux positifs).
+    description: Détection des ventes à perte (prix unitaire de vente inférieur au CMUP).
     columns:
       - name: transaction_id
         data_tests:

@@ -1,0 +1,48 @@
+domaine: ventes_achats
+
+champs:
+  - nom: date_ecriture
+    description: "Date de l'écriture comptable (vente ou achat)"
+    type: date
+    obligatoire: true
+
+  - nom: type_ecriture
+    description: "Nature de l'écriture : Vente ou Achat"
+    type: string
+    obligatoire: true
+    valeurs_attendues: ["Vente", "Achat"]
+
+  - nom: type_document
+    description: "Type de document source (ex: Expédition vente, Réception achat, Réception retour vente)"
+    type: string
+    obligatoire: true
+
+  - nom: numero_document
+    description: "Identifiant du document comptable (bon de livraison, facture...)"
+    type: string
+    obligatoire: true
+
+  - nom: quantite
+    description: "Quantité en unité de stock, signée selon la convention ERP"
+    type: float
+    obligatoire: true
+
+  - nom: numero_article
+    description: "Code ou référence de l'article/produit concerné"
+    type: string
+    obligatoire: true
+
+  - nom: code_unite
+    description: "Unité de mesure de la quantité (ex: KG, QUINTAL, UNITE...)"
+    type: string
+    obligatoire: true
+
+  - nom: quantite_facturee
+    description: "Quantité facturée"
+    type: float
+    obligatoire: true
+
+  - nom: montant_reel
+    description: "Montant financier réel de la ligne"
+    type: float
+    obligatoire: true

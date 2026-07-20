@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_achats_par_article
-    description: Agrégation des achats par article (quantité, montant, CMUP)
+    description: Agrégation des achats par article (quantités, montants, CMUP).
     columns:
       - name: article_key
         data_tests:
@@ -13,7 +13,7 @@ models:
               field: article_key
 
   - name: int_ventes_par_article
-    description: Agrégation des ventes (hors retours) par article
+    description: Agrégation des ventes brutes par article.
     columns:
       - name: article_key
         data_tests:
@@ -24,7 +24,7 @@ models:
               field: article_key
 
   - name: int_retours_par_article
-    description: Agrégation des retours vente par article
+    description: Agrégation des retours clients par article.
     columns:
       - name: article_key
         data_tests:

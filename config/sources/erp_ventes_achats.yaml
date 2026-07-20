@@ -1,21 +1,10 @@
-# =========================================================================
-# Fichier de configuration de source — piloté par l'utilisateur, pas par le code
-# -------------------------------------------------------------------------
-# Ce fichier décrit UNE source de données (ici : extrait ERP Ventes/Achats).
-# Le code Python (ingestion/) ne connaît AUCUN nom de colonne en dur :
-# tout passe par ce mapping. Pour brancher un nouvel extrait ERP demain,
-# même avec des colonnes renommées ou réordonnées, il suffit de dupliquer
-# ce fichier et d'ajuster le "mapping" — aucune ligne de code à toucher.
-# =========================================================================
-
+# Configuration de source : ERP Ventes/Achats
 source_id: erp_ventes_achats
 label: "Écritures comptables Ventes/Achats (ERP)"
-connector: excel            # doit correspondre à un connecteur dans ingestion/connectors/
-file_pattern: "*.xlsx"      # utilisé par main.py pour retrouver le fichier dans data/raw/
+connector: excel
+file_pattern: "*.xlsx"
 
-# ---- Mapping : nom métier générique -> nom réel de colonne dans le fichier source ----
-# Le nom à gauche (clé) est stable et utilisé partout dans le reste du pipeline (dbt inclus).
-# Le nom à droite (valeur) est celui qui apparaît réellement dans CE fichier Excel.
+# Mapping : nom_standard -> nom_colonne_source
 mapping:
   date_ecriture: "Date comptabilisation"
   type_ecriture: "Type écriture"
@@ -27,9 +16,7 @@ mapping:
   quantite_facturee: "Quantité facturée"
   montant_reel: "Montant  (réel)"
 
-# ---- Schéma attendu : types + règles de validation génériques ----
-# Utilisé par ingestion/core/validator.py pour rejeter/alerter sur les
-# lignes non conformes AVANT chargement, quel que soit le domaine métier.
+# Validation de schéma (contrôle d'ingestion)
 schema:
   date_ecriture:
     type: date
@@ -37,7 +24,9 @@ schema:
   type_ecriture:
     type: string
     required: true
-    allowed_values: ["Vente", "Achat"]
+    allowed_values:
+      - "Vente"
+      - "Achat"
   type_document:
     type: string
     required: true
@@ -60,13 +49,14 @@ schema:
     type: float
     required: true
 
-# ---- Clé "métier" utilisée pour dédoublonner / historiser ----
-business_key: ["numero_document", "numero_article"]
+# Clé d'unicité métier
+business_key:
+  - numero_document
+  - numero_article
 
-# ---- Règles métier spécifiques à CE domaine (Ventes/Achats) ----
-# Ces règles ne sont PAS génériques : elles sont propres au module métier
-# "ventes_achats" et lues par ce module précis, pas par le moteur générique.
+# Paramètres du domaine Ventes/Achats
 business_rules:
-  retour_vente_document_types: ["Réception retour vente"]
-  normaliser_signe_quantite: true   # les quantités doivent devenir positives après nettoyage
+  retour_vente_document_types:
+    - "Réception retour vente"
+  normaliser_signe_quantite: true
   cible_table_brute: "raw.erp_ventes_achats"
