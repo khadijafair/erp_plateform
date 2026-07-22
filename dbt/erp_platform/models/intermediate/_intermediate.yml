@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_achats_par_article
-    description: Agrégation des achats par article (quantités, montants, CMUP).
+    description: Agrégation des achats par article (quantité, montant, CMUP)
     columns:
       - name: article_key
         data_tests:
@@ -13,7 +13,7 @@ models:
               field: article_key
 
   - name: int_ventes_par_article
-    description: Agrégation des ventes brutes par article.
+    description: Agrégation des ventes (hors retours) par article
     columns:
       - name: article_key
         data_tests:
@@ -24,9 +24,28 @@ models:
               field: article_key
 
   - name: int_retours_par_article
-    description: Agrégation des retours clients par article.
+    description: Agrégation des retours vente par article
     columns:
       - name: article_key
         data_tests:
           - unique
+          - not_null
+
+  - name: int_resultats_assemblage
+    description: Produits finis obtenus par ordre de fabrication (numero_commande)
+
+  - name: int_consommations_assemblage
+    description: Matières premières consommées par ordre de fabrication (numero_commande)
+
+  - name: int_nomenclature_ratio
+    description: >
+      Ratio de consommation matière première par unité de produit fini,
+      calculé sur l'ensemble des commandes observées. Voir
+      contient_commande_multi_produits pour les cas à interpréter avec prudence.
+    columns:
+      - name: article_fini
+        data_tests:
+          - not_null
+      - name: article_matiere
+        data_tests:
           - not_null

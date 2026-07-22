@@ -33,3 +33,4 @@ business_key:
 # Paramètres du domaine Référentiel Articles
 business_rules:
   cible_table_brute: "raw.erp_referentiel_articles"
+  mode_chargement: "replace"

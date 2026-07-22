@@ -64,3 +64,45 @@ sources:
               vente (avoir qui réduit le CA)
             data_tests:
               - not_null
+
+      - name: erp_production_assemblage
+        description: >
+          Écritures de production/assemblage : pour chaque ordre de
+          fabrication (numero_commande), une ou plusieurs lignes
+          "Consommation d'assemblage" (matières premières utilisées, quantité
+          négative) et une ou plusieurs lignes "Résultat d'assemblage"
+          (produit fini obtenu, quantité positive). C'est la nomenclature
+          (BOM) qui relie les produits vendus aux matières achetées.
+        columns:
+          - name: numero_commande
+            description: Identifiant de l'ordre de fabrication, relie consommations et résultats
+            data_tests:
+              - not_null
+          - name: type_ecriture
+            description: "Consommation d'assemblage ou Résultat d'assemblage"
+            data_tests:
+              - not_null
+              - accepted_values:
+                  values: ["Consommation d''assemblage", "Résultat d''assemblage"]
+          - name: numero_article
+            data_tests:
+              - not_null
+          - name: quantite
+            description: >
+              Signe déjà normalisé à la source (négatif=consommation,
+              positif=résultat) — normaliser_signe_quantite=false dans la config
+            data_tests:
+              - not_null
+
+      - name: erp_referentiel_articles
+        description: >
+          Référentiel articles (master data) : description, unité de base,
+          stock actuel. 183 articles, clé numero_article.
+        columns:
+          - name: numero_article
+            data_tests:
+              - not_null
+              - unique
+          - name: description
+            data_tests:
+              - not_null

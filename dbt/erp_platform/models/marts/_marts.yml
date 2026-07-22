@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: dim_date
-    description: Dimension calendrier au grain quotidien.
+    description: Calendrier jour par jour couvrant la plage des écritures présentes
     columns:
       - name: date_id
         data_tests:
@@ -10,7 +10,7 @@ models:
           - not_null
 
   - name: dim_article
-    description: Dimension article dérivée des écritures de transactions.
+    description: Un article par ligne, avec statistiques dérivées des transactions (pas de référentiel article externe disponible)
     columns:
       - name: article_key
         data_tests:
@@ -22,7 +22,7 @@ models:
           - not_null
 
   - name: dim_unite
-    description: Dimension des unités de mesure observées.
+    description: Unités de mesure observées, catégorisées (poids / unitaire / conditionnement) — non convertibles entre elles sans référentiel externe
     columns:
       - name: unite_key
         data_tests:
@@ -30,7 +30,11 @@ models:
           - not_null
 
   - name: fact_transactions
-    description: Table de faits consolidée des écritures Ventes et Achats.
+    description: >
+      Table de faits au grain "ligne d'écriture Ventes/Achats". Signe déjà
+      normalisé en amont (staging) : quantite_stock négative = sortie,
+      positive = entrée ; montant_reel positif pour un achat, au signe
+      d'origine pour une vente/retour.
     columns:
       - name: transaction_id
         data_tests:
@@ -56,7 +60,11 @@ models:
               field: unite_key
 
   - name: mart_marge_article
-    description: Marge brute estimée par article (CA net moins CMUP).
+    description: >
+      Marge brute estimée par article (CA net - coût des quantités vendues).
+      Coût calculé en priorité via la nomenclature de production (matières
+      premières réellement consommées), avec repli sur un CMUP achat direct
+      si l'article est acheté et revendu tel quel. Voir colonne marge_fiable.
     columns:
       - name: article_key
         data_tests:
@@ -66,8 +74,20 @@ models:
               to: ref('dim_article')
               field: article_key
 
+  - name: mart_cout_revient_article
+    description: >
+      Coût de revient estimé par produit fini, via sa nomenclature
+      (matières premières consommées en production, valorisées à leur
+      CMUP achat). Voir toutes_matieres_ont_cout_achat et
+      contient_commande_multi_produits pour évaluer la fiabilité.
+    columns:
+      - name: article_fini
+        data_tests:
+          - unique
+          - not_null
+
   - name: mart_abc_article
-    description: Classification Pareto (A/B/C) selon la contribution au CA net.
+    description: Classement Pareto (A/B/C) des articles par contribution au chiffre d'affaires net
     columns:
       - name: article_key
         data_tests:
@@ -79,7 +99,10 @@ models:
               values: ["A", "B", "C"]
 
   - name: mart_anomalies_ventes
-    description: Détection des ventes à perte (prix unitaire de vente inférieur au CMUP).
+    description: >
+      Lignes de vente dont le prix unitaire facturé est inférieur au CMUP
+      achat de l'article (détection par règle métier, restreinte aux
+      articles à unité unique pour éviter les faux positifs).
     columns:
       - name: transaction_id
         data_tests:

@@ -32,17 +32,19 @@ def load(
         with engine.begin() as conn:
             conn.exec_driver_sql(f"CREATE SCHEMA IF NOT EXISTS {schema}")
 
+        mode_chargement = source_config.business_rules.get("mode_chargement", "append")
+
         df.to_sql(
             name=table,
             con=engine,
             schema=schema,
-            if_exists="append",
+            if_exists=mode_chargement,
             index=False,
             chunksize=5000,
             method="multi",
         )
-        return f"postgres:{schema}.{table} ({len(df)} lignes)"
-
+        return f"postgres:{schema}.{table} ({len(df)} lignes, mode={mode_chargement})"
+    
     target_dir = Path(processed_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
     out_path = target_dir / f"{source_config.source_id}.parquet"

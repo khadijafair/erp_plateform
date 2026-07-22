@@ -5,4 +5,4 @@ horizon_semaines: 8            # nb de semaines à prévoir dans le futur
 min_semaines_historique: 52    # un article avec moins d'historique n'est pas prévu 
 perimetre: "classe_abc = 'A'"  # filtre SQL appliqué sur mart_abc_article pour sélectionner les articles
 table_sortie: "ml.previsions_demande_hebdo"
-marts_schema: "public_marts"
+marts_schema: "marts"

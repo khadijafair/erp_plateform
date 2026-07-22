@@ -19,7 +19,7 @@ with ventes as (
 
 cout_article as (
 
-    select article_key, cout_unitaire_moyen_pondere, marge_fiable
+    select article_key, cout_unitaire_retenu as cout_unitaire_moyen_pondere, marge_fiable
     from {{ ref('mart_marge_article') }}
     where marge_fiable
 
