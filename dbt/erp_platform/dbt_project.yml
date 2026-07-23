@@ -2,6 +2,8 @@ name: 'erp_platform'
 version: '1.0.0'
 config-version: 2
 
+require-dbt-version: [">=1.8.0", "<2.0.0"]
+
 profile: 'erp_platform'
 
 model-paths: ["models"]
@@ -14,7 +16,6 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
-# Variables globales du projet
 vars:
   retour_vente_document_types:
     - "Réception retour vente"
@@ -23,7 +24,6 @@ vars:
   achat_document_types:
     - "Réception achat"
 
-# Configuration des couches de modélisation
 models:
   erp_platform:
     staging:

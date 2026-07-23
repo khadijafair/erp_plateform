@@ -1,12 +1,9 @@
 {#
-  Staging = 1ère couche métier. On ne fait ici QUE de la fiabilisation :
-    - typage / trim
-    - normalisation du signe des quantités (convention stock unique)
-    - identification des retours vente
-    - clé technique stable, même pour les lignes multiples d'un même
-      document/article (voir note plus bas)
-  Aucun calcul de marge ici : ça viendra dans un mart dédié une fois
-  fact_transactions disponible.
+  Staging Ventes/Achats : fiabilisation uniquement.
+  - typage / trim
+  - normalisation du signe des quantités
+  - identification des retours vente
+  - clé technique stable
 #}
 
 {% set retours = var('retour_vente_document_types') %}
@@ -48,10 +45,7 @@ enrichi as (
             {% for t in ventes %}'{{ t }}'{{ ", " if not loop.last }}{% endfor %}
         )                                                   as is_expedition_vente,
 
-        -- Facteur de conversion (ex: CRT-12*1 -> 12)
-        {{ get_conversion_factor('code_unite') }}           as conversion_factor,
 
-        -- Quantité signée, PAS de conversion d'unité ici 
         case
             when type_document in ({% for t in ventes %}'{{ t }}'{{ ", " if not loop.last }}{% endfor %})
                 then -abs(quantite_brute)
@@ -62,12 +56,12 @@ enrichi as (
             when type_document in ({% for t in ventes %}'{{ t }}'{{ ", " if not loop.last }}{% endfor %})
                 then -abs(quantite_facturee_brute)
             else abs(quantite_facturee_brute)
-        end                                                 as quantite_facturee_signee, 
+        end                                                 as quantite_facturee_signee,
 
         case
             when type_ecriture = 'Achat' then abs(montant_reel)
             else montant_reel
-        end                                                    as montant_signe
+        end                                                 as montant_signe
 
     from renamed
 
@@ -82,7 +76,7 @@ avec_cle as (
                 date_ecriture, type_ecriture, type_document, numero_document,
                 numero_article, code_unite, quantite_brute,
                 quantite_facturee_brute, montant_reel
-            order by (select 1)
+            order by numero_document, quantite_brute   -- déterministe
         )                                                   as occurrence_ligne
 
     from enrichi
@@ -106,9 +100,8 @@ select
     is_expedition_vente,
     quantite_stock,
     quantite_facturee_signee,
-    montant_signe as montant_reel,                                         
+    montant_signe as montant_reel,
 
-    -- indicateur utile pour le monitoring qualité
     count(*) over (
         partition by numero_document, numero_article
     ) > 1                                                   as cle_metier_non_unique

@@ -1,4 +1,4 @@
-# Données (jamais versionnées : confidentialité + poids des fichiers)
+# Données
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
@@ -6,6 +6,8 @@ data/processed/*
 
 # Secrets
 .env
+dbt/profiles.yml
+profiles.yml
 
 # Python
 __pycache__/
@@ -20,3 +22,13 @@ dbt/erp_platform/logs/
 
 # OS
 .DS_Store
+
+# Logs 
+**/*.log
+
+# Power BI
+*.pbix
+
+# IDE
+.idea/
+.vscode/

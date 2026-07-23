@@ -50,7 +50,7 @@ avec_cle as (
                 numero_origine, date_ecriture, type_ecriture, numero_commande,
                 type_document, numero_document, quantite, numero_article,
                 code_magasin, code_unite
-            order by (select 1)
+            order by numero_document, quantite   -- déterministe
         )                                               as occurrence_ligne
 
     from enrichi

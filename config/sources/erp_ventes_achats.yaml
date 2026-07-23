@@ -1,8 +1,8 @@
 # Configuration de source : ERP Ventes/Achats
 source_id: erp_ventes_achats
-label: "Écritures comptables Ventes/Achats (ERP)"
+label: "ventes_achats"
 connector: excel
-file_pattern: "*.xlsx"
+file_pattern: "ventes_achats*.xlsx"
 
 # Mapping : nom_standard -> nom_colonne_source
 mapping:
@@ -49,10 +49,6 @@ schema:
     type: float
     required: true
 
-# Clé d'unicité métier
-business_key:
-  - numero_document
-  - numero_article
 
 # Paramètres du domaine Ventes/Achats
 business_rules:
@@ -60,3 +56,4 @@ business_rules:
     - "Réception retour vente"
   normaliser_signe_quantite: true
   cible_table_brute: "raw.erp_ventes_achats"
+  mode_chargement: "replace"

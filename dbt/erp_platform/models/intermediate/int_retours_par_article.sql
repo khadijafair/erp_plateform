@@ -1,17 +1,19 @@
-{# Retours vente isolés : montant déjà négatif dans la convention du staging. #}
+{#
+  Retours vente isolés. Montant déjà négatif dans le staging.
+#}
 
 with retours as (
 
     select *
-    from {{ ref('fact_transactions') }}
+    from {{ ref('stg_erp_ventes_achats') }}
     where is_retour_vente
 
 )
 
 select
-    article_key,
+    numero_article,
     count(*)                            as nb_lignes_retour,
-    sum(montant_reel)                   as montant_total_retours  -- négatif
+    sum(montant_reel)                   as montant_total_retours
 
 from retours
-group by article_key
+group by numero_article

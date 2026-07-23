@@ -1,33 +1,31 @@
 {#
-  Agrégation des ventes par article. Les retours vente sont EXCLUS ici
-  (is_expedition_vente filtre dessus) et traités séparément dans
-  int_retours_par_article, pour que le CA vente et l'impact des retours
-  restent lisibles indépendamment plutôt que noyés dans un seul chiffre.
+  Agrégation des ventes par article (retours exclus via is_expedition_vente).
+  Les retours sont traités séparément dans int_retours_par_article.
 #}
 
 with ventes as (
 
     select *
-    from {{ ref('fact_transactions') }}
+    from {{ ref('stg_erp_ventes_achats') }}
     where is_expedition_vente
 
 )
 
 select
-    article_key,
+    numero_article,
 
-    count(*)                                        as nb_lignes_vente,
-    sum(abs(quantite_stock))                         as quantite_totale_vendue,
-    sum(montant_reel)                                as chiffre_affaires,
+    count(*)                                       as nb_lignes_vente,
+    sum(abs(quantite_stock))                        as quantite_totale_vendue,
+    sum(montant_reel)                              as chiffre_affaires,
 
     case
         when sum(abs(quantite_stock)) > 0
             then round(sum(montant_reel) / sum(abs(quantite_stock)), 4)
         else null
-    end                                               as prix_unitaire_moyen_vente,
+    end                                            as prix_unitaire_moyen_vente,
 
-    min(date_id)                                     as premiere_vente,
-    max(date_id)                                     as derniere_vente
+    min(date_ecriture)                             as premiere_vente,
+    max(date_ecriture)                             as derniere_vente
 
 from ventes
-group by article_key
+group by numero_article

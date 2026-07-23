@@ -1,23 +1,11 @@
 {#
-  Marge brute ESTIMÉE par article = CA net (ventes - retours) - coût de
-  revient des quantités vendues.
+  Marge brute ESTIMÉE par article = CA net - coût des quantités vendues.
 
-  Coût de revient = deux méthodes possibles, par ordre de préférence :
-    1. NOMENCLATURE (méthode principale) : le produit vendu est un produit
-       fini issu de l'atelier d'assemblage -> on utilise le coût de revient
-       calculé dans mart_cout_revient_article (nomenclature reconstruite,
-       matières premières valorisées à leur CMUP achat).
-    2. ACHAT DIRECT (repli) : le produit vendu n'a jamais été produit via
-       l'atelier (pas de ligne "Résultat d'assemblage" à son nom) mais a
-       un CMUP achat direct -> cas d'un article simplement revendu sans
-       transformation (négoce).
+  Méthodes par ordre de préférence :
+    1. NOMENCLATURE : produit fini issu de l'atelier.
+    2. ACHAT DIRECT : article revendu sans transformation.
 
-  Fiabilité : mart_cout_revient_article peut renvoyer un coût de revient
-  même incomplet (toutes_matieres_ont_cout_achat = false), auquel cas le
-  chiffre est affiché mais explicitement exclu de marge_fiable, de même
-  que les commandes multi-produits (contient_commande_multi_produits) où
-  le ratio de consommation est ambigu par construction. Idem pour les
-  articles vendus dans plusieurs unités de mesure (a_plusieurs_unites).
+  marge_fiable = true UNIQUEMENT si niveau_confiance = 'haute'.
 #}
 
 with ventes as (
@@ -53,15 +41,15 @@ assemble as (
         a.numero_article,
         a.unite_principale,
         a.a_plusieurs_unites,
-        a.unite_vente_coherente_avec_production,   
+        a.unite_vente_coherente_avec_production,
 
-        coalesce(v.quantite_totale_vendue, 0)                          as quantite_vendue,
-        coalesce(v.chiffre_affaires, 0)                                as chiffre_affaires_brut,
-        coalesce(r.montant_total_retours, 0)                           as montant_retours,
+        coalesce(v.quantite_totale_vendue, 0) as quantite_vendue,
+        coalesce(v.chiffre_affaires, 0) as chiffre_affaires_brut,
+        coalesce(r.montant_total_retours, 0) as montant_retours,
         coalesce(v.chiffre_affaires, 0) + coalesce(r.montant_total_retours, 0)
-                                                                        as chiffre_affaires_net,
+            as chiffre_affaires_net,
 
-        ac.cout_unitaire_moyen_pondere                                 as cout_unitaire_achat_direct,
+        ac.cout_unitaire_moyen_pondere as cout_unitaire_achat_direct,
         ac.quantite_totale_achetee,
 
         cr.cout_revient_estime,
@@ -73,15 +61,15 @@ assemble as (
             when cr.article_fini is not null then 'nomenclature'
             when ac.cout_unitaire_moyen_pondere > 0 then 'achat_direct'
             else null
-        end                                                             as methode_cout,
+        end as methode_cout,
 
         coalesce(cr.cout_revient_estime, ac.cout_unitaire_moyen_pondere)
-                                                                        as cout_unitaire_retenu
+            as cout_unitaire_retenu
 
     from article a
-    left join ventes v        on a.article_key = v.article_key
-    left join achats ac       on a.article_key = ac.article_key
-    left join retours r       on a.article_key = r.article_key
+    left join ventes v on a.numero_article = v.numero_article
+    left join achats ac on a.numero_article = ac.numero_article
+    left join retours r on a.numero_article = r.numero_article
     left join cout_revient cr on a.numero_article = cr.article_fini
 
 ),
@@ -94,7 +82,7 @@ avec_cout as (
             when cout_unitaire_retenu is not null
                 then round(quantite_vendue * cout_unitaire_retenu, 2)
             else null
-        end                                                             as cout_estime_vendu
+        end as cout_estime_vendu
 
     from assemble
 
@@ -108,13 +96,14 @@ avec_marge as (
             when cout_estime_vendu is not null
                 then round(chiffre_affaires_net - cout_estime_vendu, 2)
             else null
-        end                                                             as marge_estimee,
+        end as marge_estimee,
 
         case
             when cout_estime_vendu is not null and chiffre_affaires_net != 0
-                then round(100.0 * (chiffre_affaires_net - cout_estime_vendu) / nullif(chiffre_affaires_net, 0), 1)
+                then round(100.0 * (chiffre_affaires_net - cout_estime_vendu)
+                    / nullif(chiffre_affaires_net, 0), 1)
             else null
-        end                                                             as marge_pct
+        end as marge_pct
 
     from avec_cout
 
@@ -125,19 +114,18 @@ avec_niveau as (
     select
         *,
         case
-            when cout_estime_vendu is null or cout_unitaire_retenu is null or quantite_vendue = 0 
+            when cout_estime_vendu is null or cout_unitaire_retenu is null or quantite_vendue = 0
                 then 'indetermine'
-            when a_plusieurs_unites 
+            when a_plusieurs_unites
                 then 'faible'
-            when methode_cout = 'nomenclature' and (not toutes_matieres_ont_cout_achat or contient_commande_multi_produits) 
+            when methode_cout = 'nomenclature' and (not toutes_matieres_ont_cout_achat or contient_commande_multi_produits)
                 then 'moyenne'
-            when methode_cout = 'nomenclature' and unite_vente_coherente_avec_production = false 
-                and chiffre_affaires_net < 10000000 
+            when methode_cout = 'nomenclature' and unite_vente_coherente_avec_production = false
                 then 'faible'
-            when methode_cout = 'achat_direct' and (cout_unitaire_achat_direct is null or cout_unitaire_achat_direct = 0) 
+            when methode_cout = 'achat_direct' and (cout_unitaire_achat_direct is null or cout_unitaire_achat_direct = 0)
                 then 'faible'
             else 'haute'
-        end                                                                 as niveau_confiance
+        end as niveau_confiance
 
     from avec_marge
 
@@ -145,5 +133,5 @@ avec_niveau as (
 
 select
     *,
-    (niveau_confiance in ('haute', 'moyenne')) as marge_fiable
+    (niveau_confiance = 'haute') as marge_fiable
 from avec_niveau

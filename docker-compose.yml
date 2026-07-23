@@ -17,8 +17,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - erp_network
 
-  # ========== ADMINER (interface web pour PostgreSQL) ==========
+  # ========== ADMINER ==========
   adminer:
     image: adminer:latest
     container_name: erp_platform_adminer
@@ -28,8 +30,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - erp_network
 
-  # ========== N8N (orchestration) ==========
+  # ========== N8N ==========
   n8n:
     image: n8nio/n8n:latest
     container_name: erp_platform_n8n
@@ -51,8 +55,10 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./data/raw:/data/raw
+    networks:
+      - erp_network
 
-  # ========== OLLAMA (LLM local pour le schema mapper) ==========
+  # ========== OLLAMA ==========
   ollama:
     image: ollama/ollama:latest
     container_name: erp_platform_ollama
@@ -63,7 +69,11 @@ services:
       - ollama_data:/root/.ollama
     environment:
       - OLLAMA_HOST=0.0.0.0
-    # Pour utiliser le GPU (NVIDIA) sur Windows/WSL2, décommentez ces lignes :
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     # deploy:
     #   resources:
     #     reservations:
@@ -72,8 +82,10 @@ services:
     #           count: all
     #           capabilities: [gpu]
     command: serve
+    networks:
+      - erp_network
 
-  # ========== POSTGRES EXPORTER (métriques pour Prometheus) ==========
+  # ========== POSTGRES EXPORTER ==========
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: erp_platform_postgres_exporter
@@ -85,8 +97,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - erp_network
 
-  # ========== PROMETHEUS (monitoring) ==========
+  # ========== PROMETHEUS ==========
   prometheus:
     image: prom/prometheus:latest
     container_name: erp_platform_prometheus
@@ -99,8 +113,11 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    networks:
+      - erp_network
 
-  # ========== GRAFANA (visualisation monitoring) ==========
+  # ========== GRAFANA ==========
   grafana:
     image: grafana/grafana:latest
     container_name: erp_platform_grafana
@@ -109,29 +126,33 @@ services:
       - "3000:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-      GF_INSTALL_PLUGINS: grafana-piechart-panel
     volumes:
       - grafana_data:/var/lib/grafana
       - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
     depends_on:
       - prometheus
+    networks:
+      - erp_network
 
-  # ========== DBT (exécution dans un conteneur) ==========
+  # ========== DBT ==========
   dbt:
     image: ghcr.io/dbt-labs/dbt-postgres:1.8.0
     container_name: erp_platform_dbt
     restart: unless-stopped
     working_dir: /usr/app/dbt
     volumes:
-      - ./dbt/erp_platform:/usr/app/dbt          # Code dbt
-      - ./dbt/profiles.yml:/root/.dbt/profiles.yml  # Profil dbt (à créer)
-      - dbt_packages:/usr/app/dbt/dbt_packages   # Persistence des packages
+      - ./dbt/erp_platform:/usr/app/dbt
+      - ./dbt/profiles.yml:/home/dbt/.dbt/profiles.yml
+      - dbt_packages:/usr/app/dbt/dbt_packages
     depends_on:
       postgres:
         condition: service_healthy
-    # On garde le conteneur actif pour pouvoir y exécuter des commandes
-    command: ["tail", "-f", "/dev/null"]
+    stdin_open: true
+    tty: true
+    command: ["/bin/sh"]
+    networks:
+      - erp_network
 
 volumes:
   pgdata:
@@ -140,3 +161,7 @@ volumes:
   prometheus_data:
   grafana_data:
   dbt_packages:
+
+networks:
+  erp_network:
+    driver: bridge

@@ -258,3 +258,175 @@ erp-platform
 
 ```
 
+
+```
+erp-platform
+├─ config
+│  └─ sources
+│     ├─ erp_production_assemblage.yaml
+│     ├─ erp_referentiel_articles.yaml
+│     └─ erp_ventes_achats.yaml
+├─ data
+├─ dbt
+│  └─ erp_platform
+│     ├─ dbt_project.yml
+│     ├─ macros
+│     │  └─ get_conversion_factor.sql
+│     ├─ models
+│     │  ├─ intermediate
+│     │  │  ├─ int_achats_par_article.sql
+│     │  │  ├─ int_consommations_assemblage.sql
+│     │  │  ├─ int_nomenclature_ratio.sql
+│     │  │  ├─ int_resultats_assemblage.sql
+│     │  │  ├─ int_retours_par_article.sql
+│     │  │  ├─ int_ventes_par_article.sql
+│     │  │  └─ _intermediate.yml
+│     │  ├─ marts
+│     │  │  ├─ dim_article.sql
+│     │  │  ├─ dim_articletxt.txt
+│     │  │  ├─ dim_date.sql
+│     │  │  ├─ dim_unite.sql
+│     │  │  ├─ fact_transactions.sql
+│     │  │  ├─ mart_abc_article.sql
+│     │  │  ├─ mart_anomalies_ventes.sql
+│     │  │  ├─ mart_cout_revient_article.sql
+│     │  │  ├─ mart_marge_article.sql
+│     │  │  └─ _marts.yml
+│     │  └─ staging
+│     │     ├─ stg_erp_production_assemblage.sql
+│     │     ├─ stg_erp_referentiel_articles.sql
+│     │     ├─ stg_erp_ventes_achats.sql
+│     │     ├─ _erp_sources.yml
+│     │     └─ _stg_erp_ventes_achats.yml
+│     ├─ package-lock.yml
+│     ├─ packages.yml
+│     ├─ profiles.yml.txt
+│     └─ seeds
+│        └─ unite_conversion.csv
+├─ docker
+│  ├─ grafana
+│  │  ├─ dashboards
+│  │  │  └─ dashboard.yml
+│  │  └─ datasources
+│  │     └─ datasource.yml
+│  └─ prometheus
+│     └─ prometheus.yml
+├─ docker-compose.yml
+├─ docs
+│  ├─ data_dictionary.md
+│  └─ powerbi_dashboard_guide.md
+├─ erp_platform.pbix
+├─ ingestion
+│  ├─ connectors
+│  │  ├─ excel_connector.py
+│  │  └─ __init__.py
+│  ├─ core
+│  │  ├─ config_loader.py
+│  │  ├─ loader.py
+│  │  ├─ validator.py
+│  │  └─ __init__.py
+│  ├─ main.py
+│  └─ __init__.py
+├─ logs
+│  └─ dbt.log
+├─ ml
+│  ├─ demand_forecast
+│  │  ├─ config.yaml
+│  │  ├─ forecast.py
+│  │  └─ __init__.py
+│  ├─ schema_mapper
+│  │  ├─ infer_mapping.py
+│  │  ├─ ollama_client.py
+│  │  ├─ schema_ventes_achats.yaml
+│  │  └─ __init__.py
+│  └─ __init__.py
+├─ README.md
+├─ Recap_Traitement_Donnees_ERP.pdf
+├─ requirements.txt
+└─ tests
+
+```
+```
+erp-platform
+├─ config
+│  └─ sources
+│     ├─ erp_production_assemblage.yaml
+│     ├─ erp_referentiel_articles.yaml
+│     └─ erp_ventes_achats.yaml
+├─ data
+├─ dbt
+│  └─ erp_platform
+│     ├─ dbt_project.yml
+│     ├─ macros
+│     │  └─ get_conversion_factor.sql
+│     ├─ models
+│     │  ├─ intermediate
+│     │  │  ├─ int_achats_par_article.sql
+│     │  │  ├─ int_consommations_assemblage.sql
+│     │  │  ├─ int_nomenclature_ratio.sql
+│     │  │  ├─ int_resultats_assemblage.sql
+│     │  │  ├─ int_retours_par_article.sql
+│     │  │  ├─ int_ventes_par_article.sql
+│     │  │  └─ _intermediate.yml
+│     │  ├─ marts
+│     │  │  ├─ dim_article.sql
+│     │  │  ├─ dim_date.sql
+│     │  │  ├─ dim_unite.sql
+│     │  │  ├─ fact_transactions.sql
+│     │  │  ├─ mart_abc_article.sql
+│     │  │  ├─ mart_anomalies_ventes.sql
+│     │  │  ├─ mart_cout_revient_article.sql
+│     │  │  ├─ mart_marge_article.sql
+│     │  │  └─ _marts.yml
+│     │  └─ staging
+│     │     ├─ stg_erp_production_assemblage.sql
+│     │     ├─ stg_erp_referentiel_articles.sql
+│     │     ├─ stg_erp_ventes_achats.sql
+│     │     ├─ _erp_sources.yml
+│     │     └─ _stg_erp_ventes_achats.yml
+│     ├─ package-lock.yml
+│     ├─ packages.yml
+│     └─ seeds
+│        └─ unite_conversion.csv
+├─ docker
+│  ├─ grafana
+│  │  ├─ dashboards
+│  │  │  └─ dashboard.yml
+│  │  └─ datasources
+│  │     └─ datasource.yml
+│  └─ prometheus
+│     └─ prometheus.yml
+├─ docker-compose.yml
+├─ docs
+│  ├─ data_dictionary.md
+│  └─ powerbi_dashboard_guide.md
+├─ ingestion
+│  ├─ connectors
+│  │  ├─ excel_connector.py
+│  │  └─ __init__.py
+│  ├─ core
+│  │  ├─ config_loader.py
+│  │  ├─ loader.py
+│  │  ├─ validator.py
+│  │  └─ __init__.py
+│  ├─ main.py
+│  └─ __init__.py
+├─ logs
+├─ ml
+│  ├─ demand_forecast
+│  │  ├─ config.yaml
+│  │  ├─ forecast.py
+│  │  └─ __init__.py
+│  ├─ schema_mapper
+│  │  ├─ infer_mapping.py
+│  │  ├─ ollama_client.py
+│  │  ├─ schema_ventes_achats.yaml
+│  │  └─ __init__.py
+│  └─ __init__.py
+├─ README.md
+├─ Recap_Traitement_Donnees_ERP.pdf
+├─ requirements.txt
+└─ tests
+   └─ pytest.py
+
+```

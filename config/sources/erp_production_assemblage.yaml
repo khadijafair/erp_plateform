@@ -54,12 +54,9 @@ schema:
     type: string
     required: true
 
-# Clé d'unicité métier
-business_key:
-  - numero_document
-  - numero_article
 
 # Paramètres du domaine Production/Assemblage
 business_rules:
-  normaliser_signe_quantite: false  # déjà négatif=consommation / positif=résultat dans la source
+  normaliser_signe_quantite: false  
   cible_table_brute: "raw.erp_production_assemblage"
+  mode_chargement: "replace"
