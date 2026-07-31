@@ -18,6 +18,7 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger("erp_forecast")
 
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
+EVENTS_PATH = Path(__file__).parent / "evenements_maroc.csv"
 
 
 def _sanitize_identifier(name: str) -> str:
@@ -62,11 +63,83 @@ def get_historique_hebdo(engine, article_key: str, config: dict) -> pd.DataFrame
     """
     df = pd.read_sql(text(query), engine, params={"article_key": article_key})
     df["ds"] = pd.to_datetime(df["ds"])
+
+    # Fusion avec le calendrier marocain
+    events = pd.read_csv(EVENTS_PATH)
+    events["semaine"] = pd.to_datetime(events["semaine"])
+    df = df.merge(events, left_on="ds", right_on="semaine", how="left")
+    df = df.drop(columns=["semaine"]).fillna(0)
+
+    # Détection des outliers par IQR
+    q1 = df["y"].quantile(0.25)
+    q3 = df["y"].quantile(0.75)
+    iqr = q3 - q1
+    seuil_haut = q3 + 3.0 * iqr
+    df["is_outlier"] = (df["y"] > seuil_haut).astype(int)
+    if df["is_outlier"].sum() > 0:
+        logger.info("  %d outlier(s) détecté(s) (seuil %.0f)", df["is_outlier"].sum(), seuil_haut)
+
     return df
 
 
+def _merge_regressors(futur: pd.DataFrame, historique: pd.DataFrame) -> pd.DataFrame:
+    """Merge les colonnes de régresseurs depuis historique vers futur par date."""
+    reg_cols = ["is_ramadan", "is_aid_fitr", "is_aid_adha", "is_mawlid",
+                "is_yennayer", "is_fete_trone", "is_marche_verte", "is_outlier"]
+
+    # S'assurer que ds est datetime des deux côtés
+    historique = historique.copy()
+    historique["ds"] = pd.to_datetime(historique["ds"])
+    futur["ds"] = pd.to_datetime(futur["ds"])
+
+    for col in reg_cols:
+        if col in historique.columns:
+            futur = futur.merge(historique[["ds", col]], on="ds", how="left")
+            futur[col] = futur[col].fillna(0)
+
+    return futur
+
+
+def evaluer_precision(historique: pd.DataFrame, horizon_semaines: int) -> dict:
+    """Test rétrospectif : entraîne sur 2023, prédit début 2024, compare."""
+    train = historique[historique["ds"] < pd.Timestamp("2024-01-01")]
+    test = historique[
+        (historique["ds"] >= pd.Timestamp("2024-01-01")) &
+        (historique["ds"] <= pd.Timestamp("2024-03-31"))
+    ]
+
+    if len(train) < 20 or len(test) == 0:
+        return {"mape": None, "nb_semaines_test": len(test)}
+
+    model = Prophet(
+        weekly_seasonality=False,
+        yearly_seasonality=True,
+        daily_seasonality=False,
+        interval_width=0.80,
+    )
+    for col in ["is_ramadan", "is_aid_fitr", "is_aid_adha", "is_mawlid",
+                "is_yennayer", "is_fete_trone", "is_marche_verte", "is_outlier"]:
+        if col in train.columns:
+            model.add_regressor(col)
+
+    model.fit(train)
+
+    futur = model.make_future_dataframe(periods=len(test), freq="W")
+    futur = _merge_regressors(futur, historique)
+
+    prevision = model.predict(futur)
+    prevision_test = prevision[prevision["ds"] >= pd.Timestamp("2024-01-01")]
+    merged = test.merge(prevision_test[["ds", "yhat"]], on="ds", how="inner")
+
+    if len(merged) == 0:
+        return {"mape": None, "nb_semaines_test": 0}
+
+    merged["erreur_pct"] = abs(merged["y"] - merged["yhat"]) / merged["y"].replace(0, pd.NA)
+    mape = merged["erreur_pct"].mean() * 100
+    return {"mape": round(mape, 2), "nb_semaines_test": len(merged)}
+
+
 def forecast_article(historique: pd.DataFrame, horizon_semaines: int) -> pd.DataFrame | None:
-    """Entraîne un modèle Prophet et génère les prévisions."""
     try:
         model = Prophet(
             weekly_seasonality=False,
@@ -74,14 +147,20 @@ def forecast_article(historique: pd.DataFrame, horizon_semaines: int) -> pd.Data
             daily_seasonality=False,
             interval_width=0.80,
         )
+        for col in ["is_ramadan", "is_aid_fitr", "is_aid_adha", "is_mawlid",
+                    "is_yennayer", "is_fete_trone", "is_marche_verte", "is_outlier"]:
+            if col in historique.columns:
+                model.add_regressor(col)
+
         model.fit(historique)
 
         futur = model.make_future_dataframe(periods=horizon_semaines, freq="W")
-        prevision = model.predict(futur)
+        futur = _merge_regressors(futur, historique)
 
+        prevision = model.predict(futur)
         return prevision[["ds", "yhat", "yhat_lower", "yhat_upper"]]
     except Exception as exc:
-        logger.warning("Prophet a échoué sur cet article : %s", exc)
+        logger.warning("Prophet a échoué : %s", exc)
         return None
 
 
@@ -99,6 +178,7 @@ def run():
     resultats = []
     articles_ignores = []
     articles_echoues = []
+    precisions = []
 
     logger.info("%d articles à prévoir", len(articles))
 
@@ -108,6 +188,14 @@ def run():
         if len(hist) < config["min_semaines_historique"]:
             articles_ignores.append((row["numero_article"], len(hist)))
             continue
+
+        perf = evaluer_precision(hist, config["horizon_semaines"])
+        if perf["mape"] is not None:
+            precisions.append({
+                "numero_article": row["numero_article"],
+                "mape_2024_pct": perf["mape"],
+                "nb_semaines_test": perf["nb_semaines_test"]
+            })
 
         prevision = forecast_article(hist, config["horizon_semaines"])
         if prevision is None:
@@ -121,13 +209,25 @@ def run():
 
     if articles_ignores:
         logger.info("Articles ignorés (historique insuffisant) : %d", len(articles_ignores))
-        for num, n_semaines in articles_ignores:
-            logger.info("  - %s : %d semaines", num, n_semaines)
 
     if articles_echoues:
         logger.warning("Articles échoués (Prophet) : %d", len(articles_echoues))
-        for num in articles_echoues:
-            logger.warning("  - %s", num)
+
+    if precisions:
+        df_perf = pd.DataFrame(precisions)
+        mape_moyen = df_perf["mape_2024_pct"].mean()
+        logger.info("=== PRÉCISION RÉTROSPECTIVE (début 2024) ===")
+        logger.info("MAPE moyen : %.1f%% (sur %d articles)", mape_moyen, len(df_perf))
+        logger.info("MAPE < 20%% : %d articles", (df_perf["mape_2024_pct"] < 20).sum())
+        logger.info("MAPE 20-50%% : %d articles", ((df_perf["mape_2024_pct"] >= 20) & (df_perf["mape_2024_pct"] < 50)).sum())
+        logger.info("MAPE > 50%% : %d articles", (df_perf["mape_2024_pct"] >= 50).sum())
+
+        schema, table = config["table_sortie"].split(".")
+        schema = _sanitize_identifier(schema)
+        perf_table = _sanitize_identifier(table + "_performance")
+        with engine.begin() as conn:
+            conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+        df_perf.to_sql(perf_table, engine, schema=schema, if_exists="replace", index=False)
 
     if not resultats:
         logger.warning("Aucun article prévu.")
@@ -141,7 +241,6 @@ def run():
             "yhat_upper": "quantite_prevue_max",
         }
     )
-
     df_final["quantite_prevue"] = df_final["quantite_prevue"].clip(lower=0)
     df_final["quantite_prevue_min"] = df_final["quantite_prevue_min"].clip(lower=0)
 

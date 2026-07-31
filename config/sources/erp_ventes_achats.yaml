@@ -1,22 +1,20 @@
-# Configuration de source : ERP Ventes/Achats
+# Configuration de source : Ventes 2023-2024
 source_id: erp_ventes_achats
-label: "ventes_achats"
+label: "Écritures de vente 2023-2024"
 connector: excel
 file_pattern: "ventes_achats*.xlsx"
 
-# Mapping : nom_standard -> nom_colonne_source
 mapping:
   date_ecriture: "Date comptabilisation"
   type_ecriture: "Type écriture"
   type_document: "Type document"
-  numero_document: "N° document"
   quantite: "Quantité"
   numero_article: "N° article"
+  code_magasin: "Code magasin"
   code_unite: "Code unité"
   quantite_facturee: "Quantité facturée"
-  montant_reel: "Montant  (réel)"
+  montant_reel: "Montant vente (réel)"
 
-# Validation de schéma (contrôle d'ingestion)
 schema:
   date_ecriture:
     type: date
@@ -26,17 +24,17 @@ schema:
     required: true
     allowed_values:
       - "Vente"
-      - "Achat"
+      - "Résultat d'assemblage"
   type_document:
-    type: string
-    required: true
-  numero_document:
     type: string
     required: true
   quantite:
     type: float
     required: true
   numero_article:
+    type: string
+    required: true
+  code_magasin:
     type: string
     required: true
   code_unite:
@@ -50,10 +48,7 @@ schema:
     required: true
 
 
-# Paramètres du domaine Ventes/Achats
+
 business_rules:
-  retour_vente_document_types:
-    - "Réception retour vente"
-  normaliser_signe_quantite: true
   cible_table_brute: "raw.erp_ventes_achats"
-  mode_chargement: "replace"
+  mode_chargement: replace

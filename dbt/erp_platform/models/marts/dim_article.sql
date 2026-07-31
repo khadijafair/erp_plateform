@@ -8,8 +8,7 @@ par_article as (
         min(date_ecriture) as premiere_transaction,
         max(date_ecriture) as derniere_transaction,
         count(*) as nb_lignes,
-        count(*) filter (where type_ecriture = 'Vente') as nb_lignes_vente,
-        count(*) filter (where type_ecriture = 'Achat') as nb_lignes_achat,
+        count(*) filter (where is_expedition_vente) as nb_lignes_vente,
         count(*) filter (where is_retour_vente) as nb_lignes_retour,
         count(distinct code_unite) as nb_unites_distinctes,
         mode() within group (order by code_unite) as unite_principale

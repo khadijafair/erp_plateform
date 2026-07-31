@@ -1,11 +1,7 @@
-{#
-  Retours vente isolés. Montant déjà négatif dans le staging.
-#}
-
 with retours as (
 
     select *
-    from {{ ref('stg_erp_ventes_achats') }}
+    from {{ ref('fact_transactions') }}
     where is_retour_vente
 
 )

@@ -1,6 +1,5 @@
-"""Pipeline ERP Platform — Orchestration complète sans n8n.
-Usage : python pipeline.py
-"""
+#!/usr/bin/env python3
+"""Pipeline ERP Platform — Orchestration complète."""
 
 from __future__ import annotations
 
@@ -25,11 +24,10 @@ SOURCES = [
 ]
 
 
-def run(cmd: list[str], cwd: Path | None = None, env: dict | None = None) -> None:
-    """Exécute une commande, logge et arrête le pipeline en cas d'erreur."""
+def run(cmd: list[str], cwd: Path | None = None) -> None:
     label = " ".join(cmd[:3]) + ("..." if len(cmd) > 3 else "")
     logger.info("▶ %s", label)
-    result = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True)
+    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     if result.returncode != 0:
         logger.error("Échec de : %s", label)
         logger.error("STDOUT :\n%s", result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout)

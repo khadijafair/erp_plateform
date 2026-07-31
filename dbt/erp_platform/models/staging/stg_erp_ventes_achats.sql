@@ -1,17 +1,12 @@
 {#
-  Staging Ventes/Achats : fiabilisation uniquement.
-  - typage / trim
-  - normalisation du signe des quantités
-  - identification des retours vente
-  - clé technique stable
+  Staging Ventes 2023-2024.
+  Filtre : uniquement type_ecriture = 'Vente' 
 #}
-
-{% set retours = var('retour_vente_document_types') %}
-{% set ventes = var('vente_document_types') %}
 
 with source as (
 
     select * from {{ source('raw', 'erp_ventes_achats') }}
+    where type_ecriture = 'Vente'
 
 ),
 
@@ -21,7 +16,7 @@ renamed as (
         date_ecriture::date                as date_ecriture,
         trim(type_ecriture)                as type_ecriture,
         trim(type_document)                as type_document,
-        trim(numero_document)              as numero_document,
+        NULL::varchar                      as numero_document,  -- absent de la source
         trim(numero_article)               as numero_article,
         trim(code_unite)                   as code_unite,
         quantite::numeric                  as quantite_brute,
@@ -37,31 +32,19 @@ enrichi as (
     select
         *,
 
-        type_document in (
-            {% for t in retours %}'{{ t }}'{{ ", " if not loop.last }}{% endfor %}
-        )                                                   as is_retour_vente,
+        -- Détection heuristique des retours (à adapter selon les valeurs réelles)
+        lower(type_document) like '%retour%' as is_retour_vente,
 
-        type_document in (
-            {% for t in ventes %}'{{ t }}'{{ ", " if not loop.last }}{% endfor %}
-        )                                                   as is_expedition_vente,
+        -- Toutes les lignes restantes sont des ventes
+        true                               as is_expedition_vente,
 
+        -- Convention stock : vente = sortie = négatif
+        -abs(quantite_brute)               as quantite_stock,
 
-        case
-            when type_document in ({% for t in ventes %}'{{ t }}'{{ ", " if not loop.last }}{% endfor %})
-                then -abs(quantite_brute)
-            else abs(quantite_brute)
-        end                                                 as quantite_stock,
+        -abs(quantite_facturee_brute)      as quantite_facturee_signee,
 
-        case
-            when type_document in ({% for t in ventes %}'{{ t }}'{{ ", " if not loop.last }}{% endfor %})
-                then -abs(quantite_facturee_brute)
-            else abs(quantite_facturee_brute)
-        end                                                 as quantite_facturee_signee,
-
-        case
-            when type_ecriture = 'Achat' then abs(montant_reel)
-            else montant_reel
-        end                                                 as montant_signe
+        -- Montant au signe d'origine
+        montant_reel                       as montant_signe
 
     from renamed
 
@@ -73,10 +56,9 @@ avec_cle as (
         *,
         row_number() over (
             partition by
-                date_ecriture, type_ecriture, type_document, numero_document,
-                numero_article, code_unite, quantite_brute,
-                quantite_facturee_brute, montant_reel
-            order by numero_document, quantite_brute   -- déterministe
+                date_ecriture, type_ecriture, type_document, numero_article,
+                code_unite, quantite_brute, quantite_facturee_brute, montant_reel
+            order by numero_article, quantite_brute
         )                                                   as occurrence_ligne
 
     from enrichi
@@ -85,9 +67,9 @@ avec_cle as (
 
 select
     {{ dbt_utils.generate_surrogate_key([
-        'date_ecriture', 'type_ecriture', 'type_document', 'numero_document',
-        'numero_article', 'code_unite', 'quantite_brute',
-        'quantite_facturee_brute', 'montant_reel', 'occurrence_ligne'
+        'date_ecriture', 'type_ecriture', 'type_document', 'numero_article',
+        'code_unite', 'quantite_brute', 'quantite_facturee_brute',
+        'montant_reel', 'occurrence_ligne'
     ]) }}                                                   as transaction_id,
 
     date_ecriture,
@@ -102,8 +84,9 @@ select
     quantite_facturee_signee,
     montant_signe as montant_reel,
 
-    count(*) over (
-        partition by numero_document, numero_article
-    ) > 1                                                   as cle_metier_non_unique
+    -- Pas de cle_metier_non_unique sans numero_document
+    false                                                   as cle_metier_non_unique,
+
+    occurrence_ligne
 
 from avec_cle

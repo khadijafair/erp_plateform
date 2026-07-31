@@ -14,7 +14,6 @@ from ingestion.core.config_loader import SourceConfig
 
 logger = logging.getLogger(__name__)
 
-# Réutilise la même engine pour éviter de recréer des pools à chaque appel
 _ENGINE_CACHE = {}
 
 
@@ -25,7 +24,6 @@ def _get_engine(database_url: str):
 
 
 def _sanitize_identifier(name: str) -> str:
-    """Ne garde que lettres, chiffres et underscores. Évite l'injection SQL."""
     cleaned = re.sub(r"[^a-zA-Z0-9_]", "_", name)
     if cleaned[0].isdigit():
         cleaned = "_" + cleaned
@@ -43,7 +41,6 @@ def load(
         "cible_table_brute", f"raw.{source_config.source_id}"
     )
 
-    # Sécurise le nom de la cible
     if "." in raw_target:
         schema_part, table_part = raw_target.rsplit(".", 1)
         schema = _sanitize_identifier(schema_part)
@@ -56,19 +53,17 @@ def load(
         engine = _get_engine(database_url)
 
         with engine.begin() as conn:
-            # Pas de f-string ici — paramètre bindé impossible pour DDL,
-            # mais on a nettoyé l'identifiant au-dessus.
             conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
 
         mode = source_config.business_rules.get("mode_chargement", "append")
         if mode not in ("append", "replace", "fail"):
             raise ValueError(f"Mode de chargement invalide : '{mode}'")
-        
+
+        # CORRECTION : DROP TABLE au lieu de TRUNCATE pour recréer proprement
         if mode == "replace":
             with engine.begin() as conn:
-                conn.execute(text(f'TRUNCATE TABLE "{schema}"."{table}"'))
-            mode = "append"  
-
+                conn.execute(text(f'DROP TABLE IF EXISTS "{schema}"."{table}" CASCADE'))
+            mode = "append"  # to_sql recréera la table avec la bonne structure
 
         df.to_sql(
             name=table,

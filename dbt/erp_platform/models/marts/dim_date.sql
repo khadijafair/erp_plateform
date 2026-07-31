@@ -16,7 +16,7 @@ select
     extract(month from date_day)::int          as mois,
     to_char(date_day, 'Month')                 as nom_mois,
     extract(week from date_day)::int           as semaine,
-    extract(isodow from date_day)::int         as jour_semaine_iso,  -- 1=lundi .. 7=dimanche
+    extract(isodow from date_day)::int         as jour_semaine_iso,
     extract(isodow from date_day) in (6, 7)    as est_weekend
 
 from calendrier

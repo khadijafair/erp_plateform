@@ -20,6 +20,7 @@ select
     t.transaction_id,
     t.date_ecriture                        as date_id,
     a.article_key,
+    a.numero_article,                       -- ← AJOUTÉ
     u.unite_key,
 
     t.type_ecriture,
@@ -28,7 +29,6 @@ select
     t.is_retour_vente,
     t.is_expedition_vente,
 
-    -- mesures
     t.quantite_stock,
     t.quantite_facturee_signee,
     t.montant_reel,

@@ -2,123 +2,91 @@ version: 2
 
 sources:
   - name: raw
-    description: >
-      Données brutes chargées par le pipeline d'ingestion Python.
-      Les noms de colonnes correspondent aux clés du mapping YAML.
+    description: Données brutes chargées par le pipeline d'ingestion Python
     schema: raw
     tables:
       - name: erp_ventes_achats
-        description: >
-          Écritures comptables Ventes/Achats. Un document peut contenir
-          plusieurs lignes pour le même article (lots multiples).
+        description: Écritures de vente 2023-2024
         columns:
           - name: date_ecriture
-            description: Date de comptabilisation
             data_tests:
               - not_null
           - name: type_ecriture
-            description: "Vente ou Achat"
             data_tests:
               - not_null
               - accepted_values:
-                  values: ["Vente", "Achat"]
+                  values: ["Vente", "Résultat d''assemblage"]
           - name: type_document
-            description: >
-              Type de pièce : Expédition vente, Réception achat,
-              Réception retour vente
-            data_tests:
-              - not_null
-          - name: numero_document
-            description: Numéro de pièce ERP
             data_tests:
               - not_null
           - name: quantite
-            description: Quantité brute (signe non normalisé)
             data_tests:
               - not_null
           - name: numero_article
-            description: Identifiant article (SKU)
+            data_tests:
+              - not_null
+          - name: code_magasin
             data_tests:
               - not_null
           - name: code_unite
-            description: Unité de mesure de la ligne
             data_tests:
               - not_null
           - name: quantite_facturee
-            description: Quantité facturée
             data_tests:
               - not_null
           - name: montant_reel
-            description: Montant réel de la ligne
             data_tests:
               - not_null
 
       - name: erp_production_assemblage
-        description: >
-          Écritures de production/assemblage. Pour chaque ordre de
-          fabrication, lignes de consommation (quantité négative) et
-          résultat (quantité positive).
+        description: Écritures de production et assemblage 2023
         columns:
           - name: numero_origine
-            description: Numéro d'origine de l'écriture
             data_tests:
               - not_null
           - name: date_ecriture
-            description: Date de comptabilisation
             data_tests:
               - not_null
           - name: type_ecriture
-            description: "Consommation d'assemblage ou Résultat d'assemblage"
             data_tests:
               - not_null
               - accepted_values:
                   values: ["Consommation d''assemblage", "Résultat d''assemblage"]
           - name: numero_commande
-            description: Ordre de fabrication (relie consommations et résultats)
+            data_tests:
+              - not_null
+          - name: type_document
             data_tests:
               - not_null
           - name: numero_document
-            description: Numéro de pièce ERP
             data_tests:
               - not_null
           - name: quantite
-            description: >
-              Signe normalisé à la source (négatif=consommation,
-              positif=résultat)
             data_tests:
               - not_null
           - name: numero_article
-            description: Identifiant article
             data_tests:
               - not_null
           - name: code_magasin
-            description: Code magasin de stockage
             data_tests:
               - not_null
           - name: code_unite
-            description: Unité de mesure
             data_tests:
               - not_null
 
       - name: erp_referentiel_articles
-        description: >
-          Référentiel articles (master data). 183 articles,
-          clé numero_article.
+        description: Référentiel articles (master data)
         columns:
           - name: numero_article
-            description: Identifiant unique article
             data_tests:
               - not_null
               - unique
           - name: description
-            description: Désignation produit
             data_tests:
               - not_null
           - name: unite_base
-            description: Unité de base de gestion des stocks
             data_tests:
               - not_null
           - name: stock
-            description: Stock actuel
             data_tests:
               - not_null
