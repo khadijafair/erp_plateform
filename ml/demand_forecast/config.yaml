@@ -6,3 +6,7 @@ min_semaines_historique: 52    # un article avec moins d'historique n'est pas pr
 perimetre: "classe_abc = 'A'"  # filtre SQL appliqué sur mart_abc_article pour sélectionner les articles
 table_sortie: "ml.previsions_demande_hebdo"
 marts_schema: "marts"
+validation:
+  train_cutoff: "2024-01-01"   # entraîner sur tout ce qui est avant cette date
+  test_start: "2024-01-01"     # comparer à partir de cette date
+  test_end: "2024-03-31"       # jusqu'à cette date

@@ -7,7 +7,7 @@ import os
 import requests
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
 
 def health_check() -> bool:
@@ -30,9 +30,12 @@ def ask_json(prompt: str, model: str = DEFAULT_MODEL, temperature: float = 0.1) 
             "prompt": prompt,
             "format": "json",
             "stream": False,
-            "options": {"temperature": temperature},
+            "options": {
+                "temperature": temperature,
+                "num_ctx": 2048,  # Réduit l'empreinte mémoire RAM du modèle 8B sur CPU
+            },
         },
-        timeout=300,
+        timeout=300,  # Laisse jusqu'à 5 minutes au modèle 8B pour répondre
     )
     response.raise_for_status()
     raw_text = response.json()["response"]

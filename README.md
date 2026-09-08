@@ -125,6 +125,7 @@ erp_plateform/
 │   └── macros/
 ├── ml/
 │   ├── demand_forecast/      # Prophet + calendrier événements marocains
+│   ├── production_forecast/  # Prophet 
 │   └── schema_mapper/        # Ollama (assistant IA)
 ├── docker/                   # Grafana, Prometheus
 ├── docs/                     # Dictionnaire de données, guide Power BI, captures
@@ -153,3 +154,5 @@ erp_plateform/
 ## 👤 Auteur
 
 **Khadija Fair** — Stage d'ingénierie IT, Maroc.
+
+

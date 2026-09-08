@@ -1,0 +1,43 @@
+source_id: erp_rh
+label: "Ressources Humaines — démo de généricité"
+connector: excel
+file_pattern: "*.xlsx"
+
+mapping:
+  matricule: "Matricule"
+  nom: "Nom"
+  prenom: "Prénom"
+  departement: "Département"
+  date_embauche: "Date d'embauche"   
+  salaire: "Salaire"
+  statut: "Statut"
+
+schema:
+  matricule:
+    type: string
+    required: true
+  nom:
+    type: string
+    required: true
+  prenom:
+    type: string
+    required: true
+  departement:
+    type: string
+    required: false
+  date_embauche:
+    type: date
+    required: true
+  salaire:
+    type: float
+    required: false
+  statut:
+    type: string
+    required: false
+
+business_key:
+  - matricule
+
+business_rules:
+  cible_table_brute: "raw.erp_rh"
+  mode_chargement: replace

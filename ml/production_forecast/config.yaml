@@ -1,0 +1,17 @@
+# Configuration du module de prévision de production — mêmes principes que
+# ml/demand_forecast/config.yaml : rien en dur dans le code Python.
+
+horizon_semaines: 52                  # toute l'année suivante
+min_semaines_historique: 15           # 2023 seul dispo : un an max, seuil plus permissif que la demande
+staging_schema: "staging"             # nom réel du schéma dbt staging (vérifie qu'il correspond chez toi)
+perimetre_top_n_articles: 15          # les N articles les plus produits, pour rester gérable
+table_sortie: "ml.previsions_production_hebdo"
+
+# Validation rétrospective : un seul an de données disponible (2023), donc
+# on découpe À L'INTÉRIEUR de 2023 plutôt qu'entre deux années comme pour
+# la demande. Résultat forcément moins robuste (moins de test), assumé et
+# documenté plutôt que caché.
+validation:
+  train_cutoff: "2023-10-01"
+  test_start: "2023-10-01"
+  test_end: "2023-12-31"

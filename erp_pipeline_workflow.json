@@ -1,0 +1,158 @@
+{
+  "name": "ERP Platform — Pipeline automatisé",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "n1-trigger",
+      "name": "Déclenchement manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:5000/health",
+        "options": {}
+      },
+      "id": "n2-health",
+      "name": "1. Vérifier les services (health)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            { "value1": "={{$json[\"postgres\"]}}", "value2": true },
+            { "value1": "={{$json[\"ollama\"]}}", "value2": true }
+          ]
+        }
+      },
+      "id": "n3-if-health",
+      "name": "Services OK ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:5000/api/run-pipeline",
+        "requestMethod": "POST",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "n4-run-pipeline",
+      "name": "2. Lancer le pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [860, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            { "value1": "={{$json[\"success\"]}}", "value2": true }
+          ]
+        }
+      },
+      "id": "n5-if-pipeline",
+      "name": "Pipeline réussi ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1080, 220]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:5000/api/kpis",
+        "options": {}
+      },
+      "id": "n6-kpis",
+      "name": "3. Récupérer les KPIs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1300, 140]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=✅ Pipeline ERP terminé avec succès.\nTransactions : {{$json[\"fact_transactions\"]}}\nArticles : {{$json[\"dim_article\"]}}\nPériode : {{$json[\"date_min\"]}} → {{$json[\"date_max\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "n7-notify-success",
+      "name": "4. Notification succès (à connecter : Email/Slack)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1520, 140]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=❌ Le pipeline a échoué.\nErreur : {{$json[\"stderr\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "n8-notify-pipeline-fail",
+      "name": "Notification échec pipeline (à connecter)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=⚠️ Services indisponibles avant lancement.\nPostgreSQL : {{$json[\"postgres\"]}}\nOllama : {{$json[\"ollama\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "n9-notify-health-fail",
+      "name": "Notification services down (à connecter)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [860, 420]
+    }
+  ],
+  "connections": {
+    "Déclenchement manuel": {
+      "main": [[{ "node": "1. Vérifier les services (health)", "type": "main", "index": 0 }]]
+    },
+    "1. Vérifier les services (health)": {
+      "main": [[{ "node": "Services OK ?", "type": "main", "index": 0 }]]
+    },
+    "Services OK ?": {
+      "main": [
+        [{ "node": "2. Lancer le pipeline", "type": "main", "index": 0 }],
+        [{ "node": "Notification services down (à connecter)", "type": "main", "index": 0 }]
+      ]
+    },
+    "2. Lancer le pipeline": {
+      "main": [[{ "node": "Pipeline réussi ?", "type": "main", "index": 0 }]]
+    },
+    "Pipeline réussi ?": {
+      "main": [
+        [{ "node": "3. Récupérer les KPIs", "type": "main", "index": 0 }],
+        [{ "node": "Notification échec pipeline (à connecter)", "type": "main", "index": 0 }]
+      ]
+    },
+    "3. Récupérer les KPIs": {
+      "main": [[{ "node": "4. Notification succès (à connecter : Email/Slack)", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -40,6 +40,8 @@ services:
     restart: unless-stopped
     ports:
       - "5677:5678"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-your_encryption_key}
       N8N_DATABASE_TYPE: postgresdb
@@ -91,7 +93,7 @@ services:
     container_name: erp_platform_postgres_exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-erp_admin}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-erp_platform}?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://erp_admin:changeme@postgres:5432/erp_platform?sslmode=disable"
     ports:
       - "9187:9187"
     depends_on:
@@ -107,6 +109,8 @@ services:
     restart: unless-stopped
     ports:
       - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus

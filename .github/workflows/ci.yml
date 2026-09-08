@@ -1,0 +1,68 @@
+name: CI — dbt Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  dbt-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: erp_admin
+          POSTGRES_PASSWORD: changeme
+          POSTGRES_DB: erp_platform
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install dbt
+        run: pip install dbt-postgres
+
+      - name: Create dbt profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'EOF'
+          erp_platform:
+            outputs:
+              dev:
+                type: postgres
+                host: localhost
+                port: 5432
+                user: erp_admin
+                password: changeme
+                dbname: erp_platform
+                schema: staging
+                threads: 4
+            target: dev
+          EOF
+
+      - name: Seed dbt
+        run: cd dbt/erp_platform && dbt seed
+
+      - name: Run dbt models
+        run: cd dbt/erp_platform && dbt run
+
+      - name: Test dbt models
+        run: cd dbt/erp_platform && dbt test

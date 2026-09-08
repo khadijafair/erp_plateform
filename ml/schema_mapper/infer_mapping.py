@@ -67,7 +67,7 @@ Domaine métier : "{domaine}"
 Colonnes réelles du fichier :
 {json.dumps(colonnes_source, ensure_ascii=False, indent=2)}
 
-Propose les champs génériques et le mapping en JSON :
+Propose les champs génériques et le mapping en JSON sous cette forme exacte :
 {{
   "champs_proposes": [
     {{"nom_generique": "...", "colonne_source": "Nom Colonne", "description": "...", "type": "date|string|float", "obligatoire": true, "confiance": 0.0}}
@@ -76,18 +76,37 @@ Propose les champs génériques et le mapping en JSON :
 """
 
 
+def extract_list_response(reponse: dict | list, target_key: str) -> list[dict]:
+    """Extrait de manière sécurisée la liste demandée depuis la réponse JSON du LLM."""
+    if isinstance(reponse, list):
+        return reponse
+
+    if isinstance(reponse, dict):
+        # 1. Recherche directe par la clé exacte
+        if target_key in reponse and isinstance(reponse[target_key], list):
+            return reponse[target_key]
+
+        # 2. Fallback : chercher n'importe quelle clé contenant une liste
+        for key, value in reponse.items():
+            if isinstance(value, list):
+                print(f"⚠️ Clé '{target_key}' non trouvée, utilisation de la clé alternative : '{key}'")
+                return value
+
+    raise KeyError(f"Impossible d'extraire une liste valide depuis la réponse JSON d'Ollama. Contenu reçu : {reponse}")
+
+
 def afficher_revue(mapping_propose: list[dict]) -> None:
     print("\n=== Mapping proposé par Ollama (à valider) ===\n")
     for m in mapping_propose:
         confiance = m.get("confiance", 0)
         marqueur = "⚠️ À VÉRIFIER" if confiance < 0.6 or m.get("colonne_source") is None else "OK"
-        print(f" [{marqueur}] {m['champ_cible']:<20} <- {m.get('colonne_source')!r:<30} (confiance {confiance:.2f}) — {m.get('justification', '')}")
+        print(f" [{marqueur}] {m.get('champ_cible', '?'):<20} <- {m.get('colonne_source')!r:<30} (confiance {confiance:.2f}) — {m.get('justification', '')}")
     print()
 
 
 def ecrire_draft_config(mapping_propose: list[dict], target_schema: dict, source_id: str, output_path: Path) -> None:
-    mapping = {m["champ_cible"]: m["colonne_source"] for m in mapping_propose if m.get("colonne_source") is not None}
-    schema = {c["nom"]: {"type": c["type"], "required": c["obligatoire"]} for c in target_schema["champs"] if c["nom"] in mapping}
+    mapping = {m["champ_cible"]: m["colonne_source"] for m in mapping_propose if isinstance(m, dict) and m.get("champ_cible") and m.get("colonne_source") is not None}
+    schema = {c["nom"]: {"type": c["type"], "required": c.get("obligatoire", False)} for c in target_schema["champs"] if c["nom"] in mapping}
 
     draft = {
         "source_id": source_id,
@@ -112,13 +131,13 @@ def afficher_revue_bootstrap(champs_proposes: list[dict]) -> None:
     for c in champs_proposes:
         confiance = c.get("confiance", 0)
         marqueur = "⚠️ À VÉRIFIER" if confiance < 0.6 else "OK"
-        print(f" [{marqueur}] {c['nom_generique']:<25} <- {c['colonne_source']!r:<30} ({c.get('type', '?'):<6}, confiance {confiance:.2f})")
+        print(f" [{marqueur}] {c.get('nom_generique', '?'):<25} <- {c.get('colonne_source')!r:<30} ({c.get('type', '?'):<6}, confiance {confiance:.2f})")
     print()
 
 
 def ecrire_draft_config_bootstrap(champs_proposes: list[dict], source_id: str, domaine: str, output_path: Path) -> None:
-    mapping = {c["nom_generique"]: c["colonne_source"] for c in champs_proposes}
-    schema = {c["nom_generique"]: {"type": c["type"], "required": c.get("obligatoire", False)} for c in champs_proposes}
+    mapping = {c["nom_generique"]: c["colonne_source"] for c in champs_proposes if isinstance(c, dict) and c.get("nom_generique")}
+    schema = {c["nom_generique"]: {"type": c.get("type", "string"), "required": c.get("obligatoire", False)} for c in champs_proposes if isinstance(c, dict) and c.get("nom_generique")}
 
     draft = {
         "source_id": source_id,
@@ -145,7 +164,7 @@ def run(excel_path: str, target_schema_path: str | None, source_id: str, model: 
     if bootstrap:
         prompt = build_prompt_bootstrap(colonnes_source, domaine)
         reponse = ask_json(prompt, model=model)
-        champs_proposes = reponse["champs_proposes"]
+        champs_proposes = extract_list_response(reponse, "champs_proposes")
         afficher_revue_bootstrap(champs_proposes)
         output_path = Path("config/sources") / f"_draft_{source_id}.yaml"
         ecrire_draft_config_bootstrap(champs_proposes, source_id, domaine, output_path)
@@ -153,7 +172,7 @@ def run(excel_path: str, target_schema_path: str | None, source_id: str, model: 
         target_schema = load_target_schema(target_schema_path)
         prompt = build_prompt(target_schema, colonnes_source)
         reponse = ask_json(prompt, model=model)
-        mapping_propose = reponse["mapping"]
+        mapping_propose = extract_list_response(reponse, "mapping")
         afficher_revue(mapping_propose)
         output_path = Path("config/sources") / f"_draft_{source_id}.yaml"
         ecrire_draft_config(mapping_propose, target_schema, source_id, output_path)

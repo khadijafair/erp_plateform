@@ -1,0 +1,37 @@
+# ⚠️ BROUILLON (Mode bootstrap) — valider puis retirer le préfixe _draft_.
+
+source_id: rh_employes
+label: Source rh_employes — domaine rh (brouillon généré par IA)
+connector: excel
+file_pattern: '*.xlsx'
+mapping:
+  Matricule: Matricule
+  Nom: Nom
+  Prénom: Prénom
+  Département: Département
+  Date d'embauche: Date d'embauche
+  Salaire: Salaire
+  Statut: Statut
+schema:
+  Matricule:
+    type: string
+    required: true
+  Nom:
+    type: string
+    required: true
+  Prénom:
+    type: string
+    required: true
+  Département:
+    type: string
+    required: true
+  Date d'embauche:
+    type: date|string
+    required: true
+  Salaire:
+    type: float
+    required: true
+  Statut:
+    type: string
+    required: true
+business_key: []

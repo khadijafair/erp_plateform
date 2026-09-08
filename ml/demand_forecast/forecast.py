@@ -100,35 +100,37 @@ def _merge_regressors(futur: pd.DataFrame, historique: pd.DataFrame) -> pd.DataF
     return futur
 
 
-def evaluer_precision(historique: pd.DataFrame, horizon_semaines: int) -> dict:
-    """Test rétrospectif : entraîne sur 2023, prédit début 2024, compare."""
-    train = historique[historique["ds"] < pd.Timestamp("2024-01-01")]
-    test = historique[
-        (historique["ds"] >= pd.Timestamp("2024-01-01")) &
-        (historique["ds"] <= pd.Timestamp("2024-03-31"))
-    ]
+def evaluer_precision(historique: pd.DataFrame, horizon_semaines: int, validation_cfg: dict) -> dict:
+    """Test rétrospectif : entraîne avant train_cutoff, compare sur [test_start, test_end]."""
+    train_cutoff = pd.Timestamp(validation_cfg["train_cutoff"])
+    test_start = pd.Timestamp(validation_cfg["test_start"])
+    test_end = pd.Timestamp(validation_cfg["test_end"])
+
+    train = historique[historique["ds"] < train_cutoff]
+    test = historique[(historique["ds"] >= test_start) & (historique["ds"] <= test_end)]
 
     if len(train) < 20 or len(test) == 0:
         return {"mape": None, "nb_semaines_test": len(test)}
 
     model = Prophet(
         weekly_seasonality=False,
-        yearly_seasonality=True,
+        yearly_seasonality=False,
         daily_seasonality=False,
         interval_width=0.80,
     )
     for col in ["is_ramadan", "is_aid_fitr", "is_aid_adha", "is_mawlid",
                 "is_yennayer", "is_fete_trone", "is_marche_verte", "is_outlier"]:
-        if col in train.columns:
+        if col in train.columns and train[col].nunique() > 1:
             model.add_regressor(col)
 
     model.fit(train)
 
-    futur = model.make_future_dataframe(periods=len(test), freq="W")
+   
+    futur = model.make_future_dataframe(periods=len(test), freq="W-MON")
     futur = _merge_regressors(futur, historique)
 
     prevision = model.predict(futur)
-    prevision_test = prevision[prevision["ds"] >= pd.Timestamp("2024-01-01")]
+    prevision_test = prevision[prevision["ds"] >= test_start]
     merged = test.merge(prevision_test[["ds", "yhat"]], on="ds", how="inner")
 
     if len(merged) == 0:
@@ -136,7 +138,10 @@ def evaluer_precision(historique: pd.DataFrame, horizon_semaines: int) -> dict:
 
     merged["erreur_pct"] = abs(merged["y"] - merged["yhat"]) / merged["y"].replace(0, pd.NA)
     mape = merged["erreur_pct"].mean() * 100
-    return {"mape": round(mape, 2), "nb_semaines_test": len(merged)}
+
+    wmape = (merged["y"] - merged["yhat"]).abs().sum() / merged["y"].sum() * 100
+
+    return {"mape": round(mape, 2), "wmape": round(wmape, 2), "nb_semaines_test": len(merged)}
 
 
 def forecast_article(historique: pd.DataFrame, horizon_semaines: int) -> pd.DataFrame | None:
@@ -149,15 +154,19 @@ def forecast_article(historique: pd.DataFrame, horizon_semaines: int) -> pd.Data
         )
         for col in ["is_ramadan", "is_aid_fitr", "is_aid_adha", "is_mawlid",
                     "is_yennayer", "is_fete_trone", "is_marche_verte", "is_outlier"]:
-            if col in historique.columns:
+            if col in historique.columns and historique[col].nunique() > 1:
                 model.add_regressor(col)
 
         model.fit(historique)
 
-        futur = model.make_future_dataframe(periods=horizon_semaines, freq="W")
+        futur = model.make_future_dataframe(periods=horizon_semaines, freq="W-MON")
+        
         futur = _merge_regressors(futur, historique)
 
         prevision = model.predict(futur)
+        prevision["yhat"] = prevision["yhat"].clip(lower=0)
+        prevision["yhat_lower"] = prevision["yhat_lower"].clip(lower=0)
+        prevision["yhat_upper"] = prevision["yhat_upper"].clip(lower=0)
         return prevision[["ds", "yhat", "yhat_lower", "yhat_upper"]]
     except Exception as exc:
         logger.warning("Prophet a échoué : %s", exc)
@@ -189,12 +198,13 @@ def run():
             articles_ignores.append((row["numero_article"], len(hist)))
             continue
 
-        perf = evaluer_precision(hist, config["horizon_semaines"])
+        perf = evaluer_precision(hist, config["horizon_semaines"], config["validation"])
         if perf["mape"] is not None:
             precisions.append({
                 "numero_article": row["numero_article"],
                 "mape_2024_pct": perf["mape"],
-                "nb_semaines_test": perf["nb_semaines_test"]
+                "nb_semaines_test": perf["nb_semaines_test"],
+                "wmape_pct": perf["wmape"]
             })
 
         prevision = forecast_article(hist, config["horizon_semaines"])
@@ -215,12 +225,10 @@ def run():
 
     if precisions:
         df_perf = pd.DataFrame(precisions)
-        mape_moyen = df_perf["mape_2024_pct"].mean()
+        df_perf["prevision_fiable"] = df_perf["wmape_pct"] < 50
         logger.info("=== PRÉCISION RÉTROSPECTIVE (début 2024) ===")
-        logger.info("MAPE moyen : %.1f%% (sur %d articles)", mape_moyen, len(df_perf))
-        logger.info("MAPE < 20%% : %d articles", (df_perf["mape_2024_pct"] < 20).sum())
-        logger.info("MAPE 20-50%% : %d articles", ((df_perf["mape_2024_pct"] >= 20) & (df_perf["mape_2024_pct"] < 50)).sum())
-        logger.info("MAPE > 50%% : %d articles", (df_perf["mape_2024_pct"] >= 50).sum())
+        logger.info("WMAPE moyen : %.1f%% (sur %d articles)", df_perf["wmape_pct"].mean(), len(df_perf))
+        logger.info("Prévisions fiables (WMAPE < 50%%) : %d/%d articles", df_perf["prevision_fiable"].sum(), len(df_perf))
 
         schema, table = config["table_sortie"].split(".")
         schema = _sanitize_identifier(schema)

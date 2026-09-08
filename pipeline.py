@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -16,6 +18,8 @@ logging.basicConfig(
 logger = logging.getLogger("erp_pipeline")
 
 BASE_DIR = Path(__file__).parent
+load_dotenv(BASE_DIR / ".env")   # <- maintenant après BASE_DIR
+
 DBT_DIR = BASE_DIR / "dbt" / "erp_platform"
 SOURCES = [
     "config/sources/erp_referentiel_articles.yaml",
